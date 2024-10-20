@@ -23,7 +23,6 @@ export function containsSpecialCharacters(_rule: Rule, value: string): Promise<v
     return new Promise((resolve, reject) => {
         const specialCharPattern = /[!@#$%^&*(),.?":{}|<>/]/;
         const res = specialCharPattern.test(value);
-        console.log(res);
         if(res) {
             reject('has special letters')   
         } else {

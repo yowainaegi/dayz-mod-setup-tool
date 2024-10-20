@@ -14,9 +14,13 @@ module.exports = defineConfig({
           {
             from: "./public/data/app.db",
             to: "./data/app.db"
+          },
+          {
+            from: "./public/resource",
+            to: "./"
           }
         ],
-        "productName": "DayZ Mod Setup Tool",
+        "productName": "DayZModSetupTool",
         "appId": "dayz-mod-setup-tool",
 
         "mac": {
@@ -46,7 +50,7 @@ module.exports = defineConfig({
         //   "shortcutName": "DayZ Mod Setup Tool"
         // }
         "portable": {
-          "artifactName": "${productName}-portable.exe",  // 自定义便携文件名
+          "artifactName": "${productName}-${version}.exe",  // 自定义便携文件名
           "requestExecutionLevel": "user",  // 无需管理员权限
         }
       }

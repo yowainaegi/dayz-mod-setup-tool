@@ -213,10 +213,19 @@ const getStartUpFileContent = (): Promise<string>  => {
             START_UP_FILE_PATH =  path.join(app.getAppPath(), '..', './resource/startup.bat');
         } else {
             // 正式环境
-            START_UP_FILE_PATH =  path.join(path.dirname(app.getPath('exe')), './resources/startup.bat');
+            // 获取用户本地应用数据目录 (C:\Users\用户名\AppData\Local\软件名)
+            const userDataPath = app.getPath('userData');
+
+            // 设置数据库路径为：C:\Users\用户名\AppData\Local\软件名\startup.bat
+            START_UP_FILE_PATH = path.join(userDataPath, 'startup.bat');    
+            if (!fs.existsSync(START_UP_FILE_PATH)) {
+                // 如果不存在，复制文件到
+                const startupFilePath = path.join(process.resourcesPath, 'startup.bat');
+                fs.copyFileSync(startupFilePath, START_UP_FILE_PATH);
+            }
         }
     }
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         getFileContent(START_UP_FILE_PATH).then((fileContentResData: string) => {
             resolve(fileContentResData);
         })

@@ -102,3 +102,11 @@ export function editServerDZCfg(newHostname: string, serverDZCfgFilePath: string
         })
     });
 }
+
+export function getPathSep(): Promise<string> {
+    return new Promise<string>((resolve) => {
+        window.ipcRenderer.invoke('serverAPI', 'getPathSep').then((res: ResData) => {
+            resolve((res.data));
+        });
+    });
+}

@@ -20,9 +20,7 @@ import {i18n} from "@/i18n";
 import { ref, Ref } from "vue";
 import ModInfo from "@/server/models/ModInfo";
 import ServerConfigFile from "@/server/models/ServerConfigFile";
-import { getPathSep } from "@/server/api/ConfigFileEditApi";
-import { createServerProfileFolder, editServerDZCfg, editStartBatFile } from "@/server/api/EditServerApi";
-import { transToResData } from "@/utils/ResUtils";
+import { createServerProfileFolder, editServerDZCfg, editStartBatFile, getPathSep } from "@/server/api/EditServerApi";
 import { globalErrorHandler } from "@/config/globalErrorHandler";
 
 
@@ -88,6 +86,9 @@ const MOD_FOLDER_NAME = {
 // 创建服务器
 async function runCreateTasks() {
 
+  // 获取系统路径分隔符
+  const PATH_SEP = await getPathSep();
+
   // 接收计算文件进度
   window.ipcRenderer.receive('countFileProgress', (progress: number) => {
     processFileCount.value += progress
@@ -115,9 +116,6 @@ async function runCreateTasks() {
 
 
 
-
-  // 获取系统路径分隔符
-  const PATH_SEP = await getPathSep();
 
   // Addons文件夹列表
   const addonsPathList: string[] = [];
@@ -244,6 +242,9 @@ async function runCreateTasks() {
 // 更新服务器
 async function runUpdateTasks() {
 
+  // 获取系统路径分隔符
+  const PATH_SEP = await getPathSep();
+
   modAddedList =  modAddedList.filter((item: ModInfo) => item.CanBeRemovedDZMSUTool);
 
   // 接收计算文件进度
@@ -270,9 +271,6 @@ async function runUpdateTasks() {
         );
       });
     }
-
-    // 获取系统路径分隔符
-    const PATH_SEP = await getPathSep();
 
     // Addons文件夹列表
     const addonsPathList: string[] = [];
@@ -409,7 +407,6 @@ async function start() {
   // 接收osService报错
   window.ipcRenderer.receive('os-service-process-error', (errMsg: string) => {
     globalErrorHandler(errMsg);
-    console.log('received', errMsg);
     showFoot.value = true;
   })
 
