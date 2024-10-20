@@ -1,0 +1,22 @@
+const STATUS_CODE = {
+    SUCCESS: '200',
+    DATABASE_ERROR: '500',
+    API_ERROR: '501',
+    UNKNOWN_ERROR: '503'
+}
+
+const MOD_LIST_TYPE = {
+    SUBSCRIBED: 0,
+    ADDED: 1
+}
+
+const MOD_BE_SEARCHE_STATUS = {
+    SEARCHED: 0,
+    HIDDEN: 1
+}
+
+export {
+    STATUS_CODE,
+    MOD_LIST_TYPE,
+    MOD_BE_SEARCHE_STATUS
+}
