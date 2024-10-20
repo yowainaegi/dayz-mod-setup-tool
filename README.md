@@ -54,8 +54,7 @@
 
    
 
-
-# 展示&使用方法
+## 展示&使用方法
 
 ![image-20241020180405678](md_images/zh_CN/image-20241020180405678.png)
 
@@ -137,7 +136,7 @@
 
 
 
-# 提交问题或者反应bug
+## 提交问题或者反应bug
 
 如果报错框关掉了，可以点这里截图或者复制反应bug
 
@@ -150,3 +149,11 @@
 最后，感谢您关注此项目，如果任何问题，请提issue（可以提建议也可以提交bug！）
 
 如果对您有帮助，请帮忙点点start！
+
+
+
+## License
+
+Copyright (c) 2024 YowaiNaegi
+
+Licensed under the [MIT](https://github.com/microsoft/vscode/blob/main/LICENSE.txt) license.

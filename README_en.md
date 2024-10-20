@@ -52,8 +52,7 @@ Before running this project, please ensure that the following dependencies are i
 
    
 
-
-# Display&Usage
+## Display&Usage
 
 ![image-20241020203851722](md_images/en_US/image-20241020203851722.png)
 
@@ -135,7 +134,9 @@ Automatically modified sections of `serverDZ.cfg`
 
 After the creation is complete, you can click on `startup.bat` in the root directory of the created DayZ server to run the DayZServer.
 
-# Submit issues or report bugs
+
+
+## Submit issues or report bugs
 
 If the error message box has closed, you can click here to take a screenshot or copy the bug report.
 
@@ -148,3 +149,11 @@ If the error message box has closed, you can click here to take a screenshot or 
 Finally, thank you for your attention to this project. If you have any issues, please submit an issue (you can suggest improvements or report bugs!).
 
 If you find it helpful, please don't forget to give it a star!
+
+
+
+## License
+
+Copyright (c) 2024 YowaiNaegi
+
+Licensed under the [MIT](https://github.com/microsoft/vscode/blob/main/LICENSE.txt) license.
