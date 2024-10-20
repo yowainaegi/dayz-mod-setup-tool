@@ -2,9 +2,9 @@
 
 
 
-[日本語](READMD_ja.md)版
+[日本語](README_ja.md)版
 
-[English](READMD_en.md) Version
+[English](README_en.md) Version
 
 
 

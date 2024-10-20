@@ -2,7 +2,7 @@
 
 
 
-[中文](READMD.md)版
+[中文](README.md)版
 
 [日本語](README_ja.md)版
 
