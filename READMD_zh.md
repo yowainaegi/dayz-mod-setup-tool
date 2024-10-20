@@ -20,13 +20,13 @@
 
 本工具对dayzserver的配置文件列表，右击进行编辑或者删除
 
-![image-20241020180730638](md_images\image-20241020180730638.png)
+![image-20241020180730638](md_images/image-20241020180730638.png)
 
 
 
 此状态为选中状态
 
-![image-20241020180643480](md_images\image-20241020180643480.png)
+![image-20241020180643480](md_images/image-20241020180643480.png)
 
 
 
@@ -44,17 +44,19 @@
 
 服务器配置文件夹：指profile文件夹的位置
 
-![image-20241020180924629](md_images\image-20241020180924629.png)
+![image-20241020180924629](md_images/image-20241020180924629.png)
 
 
 
-这里可以进行MOD的增加或者移除，右边表示即将挂载的MOD
+这里可以进行MOD的增加或者移除，右边表示即将挂载的MOD <span style="color: red">此工具现在为beta版，最好先在DayZ Lancher中配置好在这里不要改动，直接创建</span>
 
-![image-20241020181701732](md_images\image-20241020181701732.png)
-
-
+![image-20241020181701732](md_images/image-20241020181701732.png)
 
 
+
+创建进度
+
+![image-20241020181922364](md_images/image-20241020181922364.png)
 
 
 
