@@ -1,11 +1,10 @@
 import os from "os";
 import fs from "fs";
-import {promises as pfs} from "fs";
-import path, { resolve } from "path";
+import path from "path";
 import { STATUS_CODE } from "../models/Constant";
 import ResData from "../models/ResData";
 import { app } from "electron";
-import { transToResData } from "@/utils/ResUtils";
+// import puppeteer from "puppeteer";
 
 
 /**
@@ -305,6 +304,47 @@ const createServerProfileFolder = (serverProfileFolderPath: string) : Promise<st
    });
 }
 
+/**
+ * get previewImage from net
+ */
+// const getModPreviewImage = (url: string): Promise<string> => {
+//     const resData: ResData = {
+//         statusCode: null,
+//         data: null
+//     }
+//     return new Promise<string>(async (resolve, reject) => {
+//         try {
+//             // 启动浏览器
+//             const browser = await puppeteer.launch({
+//                 headless: true, // 设置为true以无头模式运行，false则可以看到浏览器窗口
+//                 args: ['--no-sandbox', '--disable-setuid-sandbox'],
+//                 defaultViewport: { width: 2560, height: 1440 } // 设置默认视口大小
+//             });
+
+//             // 创建新页面
+//             const page = await browser.newPage();
+
+//             // 导航到目标页面
+//             await page.goto(url, { waitUntil: 'networkidle2' }); // 等待页面加载完成
+
+//             // 抓取页面内容
+//             let content = await page.content();
+//             content = content.substring(content.indexOf(`<img id="previewImageMain" class="workshopItemPreviewImageMain" src="`), content.lastIndexOf(`<span class="zoom-icon">`));
+//             let previewImageUrl =content.substring(content.indexOf("src=\"") + 5, content.lastIndexOf("\""));
+//             // 关闭浏览器
+//             await browser.close();
+//             resData.statusCode = STATUS_CODE.SUCCESS;
+//             resData.data = previewImageUrl;
+//             resolve(JSON.stringify(resData));
+//         } catch (err: any) {
+//             resData.statusCode = STATUS_CODE.API_ERROR;
+//             resData.data = err.toString();
+//             reject(JSON.stringify(resData));
+//         }
+//     })
+// }
+
+
 // 需要在IPC RENDER 使用 invoke调用的方法
 const osServiceHanleMethodMap: Map<string, Function> = new Map();
 osServiceHanleMethodMap.set("getPathSep", getPathSep);
@@ -320,6 +360,7 @@ osServiceHanleMethodMap.set("getStartUpFileContent", getStartUpFileContent);
 osServiceHanleMethodMap.set("overwriteFileContent", overwriteFileContent);
 osServiceHanleMethodMap.set("overwriteStartupFileContent", overwriteStartupFileContent);
 osServiceHanleMethodMap.set("createServerProfileFolder", createServerProfileFolder);
+// osServiceHanleMethodMap.set("getModPreviewImage", getModPreviewImage);
 
 
 export {

@@ -108,6 +108,14 @@ function getList(): void {
   // 获取配置文件
   getConfigFileList().then((res: ConfigFile[]) => {
     configFileList.value = res;
+    // 按时间倒序排序
+    configFileList.value.sort((a, b) => {
+      if(b.id && a.id) {
+        return b.id - a.id
+      } else {
+        return -1
+      }
+    });
     // 深拷贝
     configFileListShow.value = deepClone(configFileList.value);
   })

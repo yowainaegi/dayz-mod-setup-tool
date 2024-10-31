@@ -49,12 +49,13 @@ import { useStore } from 'vuex';
 import { i18n } from '@/i18n';
 import { Ref, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { containsSpecialCharacters, pureServerFolderPathValidate, serverFolderPathValidate } from "@/server/validation/ConfigFileEditValidate";
-import { getPathSep, getPresetFileFolderPath, getPresetFileNameList, getWindowsUserName } from '@/server/api/ConfigFileEditApi';
+import { getPresetFileFolderPath, getPresetFileNameList, getWindowsUserName } from '@/server/api/ConfigFileEditApi';
 import type { Rule } from 'ant-design-vue/es/form';
 import { SelectProps, message } from 'ant-design-vue';
 import { addConfigFile, getConfigFileById, updateConfigFile } from '@/server/api/ConfigFileEditApi';
 import { getDateId } from '@/utils/Util';
 import ConfigFile from '@/server/models/ServerConfigFile';
+import { getPathSep } from '@/utils/OsUtils';
 
 
 // 路由

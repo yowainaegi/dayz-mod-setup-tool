@@ -20,8 +20,9 @@ import {i18n} from "@/i18n";
 import { ref, Ref } from "vue";
 import ModInfo from "@/server/models/ModInfo";
 import ServerConfigFile from "@/server/models/ServerConfigFile";
-import { createServerProfileFolder, editServerDZCfg, editStartBatFile, getPathSep } from "@/server/api/EditServerApi";
+import { createServerProfileFolder, editServerDZCfg, editStartBatFile } from "@/server/api/EditServerApi";
 import { globalErrorHandler } from "@/config/globalErrorHandler";
+import { getPathSep } from "@/utils/OsUtils";
 
 
 const router = useRouter();
@@ -192,7 +193,7 @@ async function runCreateTasks() {
     await window.ipcRenderer.invoke('countFilesInMultipFolder', modsPathList);
     
     for(let i = 0; i < modsPathList.length; i ++) {
-      const modFolderName = modsPathList[i].substring(modsPathList[i].indexOf('@'));
+      const modFolderName = modsPathList[i].substring(modsPathList[i].lastIndexOf(PATH_SEP) + 1);
       // 执行复制
       isCounting.value = false;
       await window.ipcRenderer.invoke('copyFolderWithProgress',
@@ -333,7 +334,7 @@ async function runUpdateTasks() {
     await window.ipcRenderer.invoke('countFilesInMultipFolder', modsPathList);
     
     for(let i = 0; i < modsPathList.length; i ++) {
-      const modFolderName = modsPathList[i].substring(modsPathList[i].indexOf('@'));
+      const modFolderName = modsPathList[i].substring(modsPathList[i].indexOf(PATH_SEP));
       // 执行复制
       isCounting.value = false;
       await window.ipcRenderer.invoke('copyFolderWithProgress',

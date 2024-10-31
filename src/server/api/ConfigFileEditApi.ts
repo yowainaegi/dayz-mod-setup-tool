@@ -61,14 +61,6 @@ export function getPresetFileFolderPath(osUsername: string): Promise<string> {
    });
 }
 
-export function getPathSep(): Promise<string> {
-    return new Promise<string>((resolve) => {
-        window.ipcRenderer.invoke('serverAPI', 'getPathSep').then((res: ResData) => {
-            resolve((res.data));
-        });
-    });
-}
-
 /**
  * 根据id获取配置文件详情
  */

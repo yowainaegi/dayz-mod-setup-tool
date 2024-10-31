@@ -16,12 +16,13 @@ export default interface ModInfo {
     LastUpdateDate: string; // Assuming it's a date string
     Url: string;
     ModMetadataName: string;
+    previewImageMain: string;
     StorageInfo: {
       CachedPreviewImage: {
         OriginalPath: string;
         FullPath: string;
         ImageJsonData: string;
-      };
+      } | null;
       DisplayName: string;
       FileHandle: number;
       FileSystemSize: number;
