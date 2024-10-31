@@ -23,8 +23,11 @@ export function getModList(): Promise<ModInfo[]> {
                     modInfoList[i].AddedStatus = MOD_LIST_TYPE.SUBSCRIBED;
                     modInfoList[i].SearchedStatus = MOD_BE_SEARCHE_STATUS.SEARCHED;
                     modInfoList[i].CanBeRemovedDZMSUTool = true;
-                    const pictureContentResData = await window.ipcRenderer.invoke('serverAPI', 'getPictureContent', modInfoList[i].StorageInfo.CachedPreviewImage.FullPath);
-                    modInfoList[i].StorageInfo.CachedPreviewImage.ImageJsonData = pictureContentResData.data;
+                    let cachedPreviewImageObj = modInfoList[i].StorageInfo.CachedPreviewImage;
+                    if(cachedPreviewImageObj) {
+                        const pictureContentResData = await window.ipcRenderer.invoke('serverAPI', 'getPictureContent', cachedPreviewImageObj.FullPath);
+                        modInfoList[i].previewImageMain = pictureContentResData.data;
+                    }
                 }
                 resolve(modInfoList); 
             });

@@ -35,7 +35,7 @@
                   <div>
                     <a-row>
                       <a-col :span="12">
-                        <img class="modPc" :src="record.StorageInfo.CachedPreviewImage.ImageJsonData" alt="">
+                        <img class="modPc" :src="record.previewImageMain" alt="">
                       </a-col>
                       <a-col :span="12">
                         <a-row>
@@ -93,7 +93,7 @@
                   <div>
                     <a-row>
                       <a-col :span="12">
-                        <img class="modPc" :src="record.StorageInfo.CachedPreviewImage.ImageJsonData" alt="">
+                        <img class="modPc" :src="record.previewImageMain" alt="">
                       </a-col>
                       <a-col :span="12">
                         <a-row>
@@ -136,6 +136,8 @@ import ServerConfigFile from "@/server/models/ServerConfigFile";
 import { deepClone } from "@/utils/Util";
 import { MOD_BE_SEARCHE_STATUS, MOD_LIST_TYPE } from "@/server/models/Constant";
 import { Modal } from "ant-design-vue";
+// import { getModPreviewImage } from "@/utils/OsUtils";
+
 
 const router = useRouter();
 const store = useStore();
@@ -300,6 +302,28 @@ function debounce<T extends (...args: any[]) => any>(fn: T, delay: number): (...
     timeout = window.setTimeout(() => fn(...args), delay);
   };
 }
+
+
+// function getModPreviewImageSync(expanded: any, record: ModInfo): void {
+//   if(expanded) {
+
+//     if(record.StorageInfo.CachedPreviewImage) {
+//       for(let item of modList_show.value) {
+//         if(record.Id === item.Id) {
+//           item.previewImageMain = record.StorageInfo.CachedPreviewImage.ImageJsonData;    
+//         }
+//       }
+//     } else {
+//       getModPreviewImage(record.Url).then(res => {
+//         for(let item of modList_show.value) {
+//           if(record.Id === item.Id) {
+//             item.previewImageMain = res;
+//           }
+//         }
+//       })
+//     }
+//   }
+// }
 
 /**
  * 返回
