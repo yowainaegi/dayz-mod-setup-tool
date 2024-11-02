@@ -77,16 +77,30 @@ const MOD_FOLDER_NAME = {
   ADDONS: 'Addons',
   // Keys
   KEYS: 'Keys',
+  // Key
+  KEY: 'Key',
   // Types
   TYPES: 'Types',
   // Events
   EVENTS: 'Events'
 }
 
+const TASK_MODE = {
+  CREATE: 'CREATE',
+  UPDATE: 'UPDATE'
+}
 
-// 创建服务器
-async function runCreateTasks() {
+const MOD_CONFIG_FOLDERS = [
+  'types', // interprets file as types.xml
+  'spawnabletypes', // interprets file as cfgspawnabletypes.xml
+  'globals', // interprets file as globals.xml
+  'economy',  // interprets file as economy.xml
+  'events', // interprets file as events.xml
+  'messages' // interprets file as messages.xml
+]
 
+
+async function task(totalTasks: number, progressManager: ProgressManager, mode: string) {
   // 获取系统路径分隔符
   const PATH_SEP = await getPathSep();
 
@@ -99,13 +113,9 @@ async function runCreateTasks() {
     processFileCount.value = 0;  
   });
 
-
-  const totalTasks = 5 + modAddedList.length;
-  const progressManager = new ProgressManager(totalTasks);
-
   for(let i = 1; i <= totalTasks; i ++) {
-  // TASK 1：接收复制文件进度
-  window.ipcRenderer.receive(`${i}_copyProgress`, (progress: number, srcPath: string, targetPath: string) => {
+  // 接收生成进度
+  window.ipcRenderer.receive(`${i}_generateProgress`, (progress: number, srcPath: string, targetPath: string) => {
       processSrcPath.value = srcPath;
       processTargetPath.value = targetPath;
       progressManager.updateProgress(
@@ -115,62 +125,61 @@ async function runCreateTasks() {
     });
   }
 
-
-
-
-  // Addons文件夹列表
-  const addonsPathList: string[] = [];
-  for(let i = 0; i < modAddedList.length; i++) {
-    addonsPathList.push(`${modAddedList[i].ExtensionPath}${PATH_SEP}${MOD_FOLDER_NAME.ADDONS}`);
-  }
-
   // Keys文件夹列表
   const keysPathList: string[] = [];
   for(let i = 0; i < modAddedList.length; i++) {
-    keysPathList.push(`${modAddedList[i].ExtensionPath}${PATH_SEP}${MOD_FOLDER_NAME.KEYS}`);
+    // 验证是否含有keys文件夹
+    let keyFolderPath = `${modAddedList[i].ExtensionPath}${PATH_SEP}${MOD_FOLDER_NAME.KEYS}`;
+
+    try {
+      await window.ipcRenderer.invoke('serverAPI', 'pathValidate', keyFolderPath)
+      keysPathList.push(keyFolderPath);
+    } catch (e) {
+      // 如果没有keys则使用key
+      keyFolderPath = `${modAddedList[i].ExtensionPath}${PATH_SEP}${MOD_FOLDER_NAME.KEY}`;
+      keysPathList.push(keyFolderPath);
+    }
   }
 
+  // MOD文件夹Map，主要讲modFolderName加上，copyMOD文件夹重命名时需要
+  class ModsPathObj {
+    extensionPath: string = "";
+    modFolderName: string = "";
+  }
+  const modsPathMap: Map<string, ModsPathObj> = new Map();
   // MOD文件夹列表
   const modsPathList: string[] = [];
   for(let i = 0; i < modAddedList.length; i++) {
     modsPathList.push(modAddedList[i].ExtensionPath);
-  }
+    const obj: ModsPathObj = {
+      extensionPath: modAddedList[i].ExtensionPath,
+      modFolderName: modAddedList[i].modFolderName
+    }
+    modsPathMap.set(modAddedList[i].Id, obj);
+  } 
 
 
   if(serverConfigFile.pure_server_folder_path && serverConfigFile.server_folder_path && serverConfigFile.deploy_server_folder_path) {
 
     let taskNo = 1;
 
-    // TASK 1：复制纯净服务器
-    processTitle.value = STAGES_TITLE.COPY_PURE_DAYZ_SERVER_FILE_TO_TARGET_PATH;
-    // 计算文件数量
-    isCounting.value = true;
-    await window.ipcRenderer.invoke('countFiles', serverConfigFile.pure_server_folder_path);
+   if(mode === TASK_MODE.CREATE) {
+      // TASK：复制纯净服务器
+      processTitle.value = STAGES_TITLE.COPY_PURE_DAYZ_SERVER_FILE_TO_TARGET_PATH;
+      // 计算文件数量
+      isCounting.value = true;
+      await window.ipcRenderer.invoke('countFiles', serverConfigFile.pure_server_folder_path);
 
-    // 执行复制
-    isCounting.value = false;
-    await window.ipcRenderer.invoke('copyFolderWithProgress',
-      `${taskNo++}`,
-      serverConfigFile.pure_server_folder_path, 
-      serverConfigFile.server_folder_path
-    )  
-
-    // // TASK 2：复制Addons
-    // processTitle.value = STAGES_TITLE.COPY_ADDONS_TO_TARGET_PATH;
-    // // 计算文件数量
-    // isCounting.value = true;
-    // await window.ipcRenderer.invoke('countFilesInMultipFolder', addonsPathList);
-
-    // // 执行复制
-    // isCounting.value = false;
-    // await window.ipcRenderer.invoke('copyMultipleFolders',
-    //   `${taskNo++}`,
-    //   addonsPathList,
-    //   `${serverConfigFile.server_folder_path}${PATH_SEP}${MOD_FOLDER_NAME.ADDONS}`
-    // )
-   
+      // 执行复制
+      isCounting.value = false;
+      await window.ipcRenderer.invoke('copyFolderWithProgress',
+        `${taskNo++}`,
+        serverConfigFile.pure_server_folder_path, 
+        serverConfigFile.server_folder_path
+      )
+   }
       
-    // TASK 3：复制Keys
+    // TASK：复制Keys
     processTitle.value = STAGES_TITLE.COPY_KEYS_TO_TARGET_PATH;
     // 计算文件数量
     isCounting.value = true;
@@ -185,22 +194,27 @@ async function runCreateTasks() {
     )
 
 
-    // TASK 4：复制MOD
+    // TASK：复制MOD
     processTitle.value = STAGES_TITLE.COPY_MODS_TO_TARGET_PATH;
 
     // 计算文件数量
     isCounting.value = true;
     await window.ipcRenderer.invoke('countFilesInMultipFolder', modsPathList);
     
-    for(let i = 0; i < modsPathList.length; i ++) {
-      const modFolderName = modsPathList[i].substring(modsPathList[i].lastIndexOf(PATH_SEP) + 1);
+    for(let key of modsPathMap.keys()) {
       // 执行复制
       isCounting.value = false;
       await window.ipcRenderer.invoke('copyFolderWithProgress',
         `${taskNo++}`,
-        modsPathList[i],
-        `${serverConfigFile.server_folder_path}${PATH_SEP}${modFolderName}`
+        modsPathMap.get(key)?.extensionPath,
+        `${serverConfigFile.server_folder_path}${PATH_SEP}${modsPathMap.get(key)?.modFolderName}`
       )
+      // TASK: 在MOD文件夹中创建各个Config文件夹
+      await window.ipcRenderer.invoke(
+        'serverAPI',
+        'createModConfigFolders',
+        `${serverConfigFile.server_folder_path}${PATH_SEP}${modsPathMap.get(key)?.modFolderName}${PATH_SEP}DAYZ_MOD_SETUP_TOOL_CREATED`,
+        MOD_CONFIG_FOLDERS)
     }
 
     if(serverConfigFile.server_folder_path && serverConfigFile.server_profile_folder) {
@@ -240,140 +254,19 @@ async function runCreateTasks() {
   }
 }
 
+
+// 创建服务器
+async function runCreateTasks() {
+  const totalTasks = 5 + modAddedList.length;
+  const progressManager = new ProgressManager(totalTasks);
+  task(totalTasks, progressManager, TASK_MODE.CREATE);
+}
+
 // 更新服务器
 async function runUpdateTasks() {
-
-  // 获取系统路径分隔符
-  const PATH_SEP = await getPathSep();
-
-  modAddedList =  modAddedList.filter((item: ModInfo) => item.CanBeRemovedDZMSUTool);
-
-  // 接收计算文件进度
-  window.ipcRenderer.receive('countFileProgress', (progress: number) => {
-    processFileCount.value += progress
-  });
-
-  window.ipcRenderer.receive('resetCountFile', () => {
-    processFileCount.value = 0;
-  });
-
-
   const totalTasks = 3 + modAddedList.length;
   const progressManager = new ProgressManager(totalTasks);
-
-  for(let i = 1; i <= totalTasks; i ++) {
-    // 接收复制文件进度
-    window.ipcRenderer.receive(`${i}_copyProgress`, (progress: number, srcPath: string, targetPath: string) => {
-        processSrcPath.value = srcPath;
-        processTargetPath.value = targetPath;
-        progressManager.updateProgress(
-          `${i}`,
-          progress
-        );
-      });
-    }
-
-    // Addons文件夹列表
-    const addonsPathList: string[] = [];
-    for(let i = 0; i < modAddedList.length; i++) {
-      addonsPathList.push(`${modAddedList[i].ExtensionPath}${PATH_SEP}${MOD_FOLDER_NAME.ADDONS}`);
-    }
-
-    // Keys文件夹列表
-    const keysPathList: string[] = [];
-    for(let i = 0; i < modAddedList.length; i++) {
-      keysPathList.push(`${modAddedList[i].ExtensionPath}${PATH_SEP}${MOD_FOLDER_NAME.KEYS}`);
-    }
-
-    // MOD文件夹列表
-    const modsPathList: string[] = [];
-    for(let i = 0; i < modAddedList.length; i++) {
-      modsPathList.push(modAddedList[i].ExtensionPath);
-    }
-
-
-    if(serverConfigFile.pure_server_folder_path && serverConfigFile.server_folder_path) {
-
-    let taskNo = 1;
-
-    // // TASK 1：复制Addons
-    // processTitle.value = STAGES_TITLE.COPY_ADDONS_TO_TARGET_PATH;
-
-    // // 计算文件数量
-    // isCounting.value = true;
-    // await window.ipcRenderer.invoke('countFilesInMultipFolder', addonsPathList);
-
-    // // 执行复制
-    // isCounting.value = false;
-    // await window.ipcRenderer.invoke('copyMultipleFolders',
-    //   `${taskNo++}`,
-    //   addonsPathList,
-    //   `${serverConfigFile.server_folder_path}${PATH_SEP}${MOD_FOLDER_NAME.ADDONS}`
-    // )
-      
-    // TASK 1：复制Keys
-    processTitle.value = STAGES_TITLE.COPY_KEYS_TO_TARGET_PATH;
-    // 计算文件数量
-    isCounting.value = true;
-    await window.ipcRenderer.invoke('countFilesInMultipFolder', keysPathList);
-
-    // 执行复制
-    isCounting.value = false;
-    await window.ipcRenderer.invoke('copyMultipleFolders',
-      `${taskNo++}`,
-      keysPathList,
-      `${serverConfigFile.server_folder_path}${PATH_SEP}${MOD_FOLDER_NAME.KEYS}`
-    )
-
-
-    // TASK 2：复制MOD
-    processTitle.value = STAGES_TITLE.COPY_MODS_TO_TARGET_PATH;
-
-    // 计算文件数量
-    isCounting.value = true;
-    await window.ipcRenderer.invoke('countFilesInMultipFolder', modsPathList);
-    
-    for(let i = 0; i < modsPathList.length; i ++) {
-      const modFolderName = modsPathList[i].substring(modsPathList[i].indexOf(PATH_SEP));
-      // 执行复制
-      isCounting.value = false;
-      await window.ipcRenderer.invoke('copyFolderWithProgress',
-        `${taskNo++}`,
-        modsPathList[i],
-        `${serverConfigFile.server_folder_path}${PATH_SEP}${modFolderName}`
-      )
-    }
-
-    if(serverConfigFile.server_folder_path && serverConfigFile.server_profile_folder) {
-      
-      // TASK 3：编辑启动BAT文件
-      processTitle.value = STAGES_TITLE.EDIT_START_UP_FILE;
-        await editStartBatFile(modAddedList, serverConfigFile.server_folder_path, serverConfigFile.server_profile_folder, true);
-        progressManager.updateProgress(
-          `${taskNo++}`,
-          100
-        );
-    }
-
-    // TASK 4：编辑ServerDZ.cfg文件
-    processTitle.value = STAGES_TITLE.EDIT_SERVER_DZ_CFG_FILE;
-    if(serverConfigFile.server_name) {
-      await editServerDZCfg(
-        serverConfigFile.server_name,
-        `${serverConfigFile.server_folder_path}${PATH_SEP}serverDZ.cfg`,
-        serverConfigFile.server_folder_path);
-      progressManager.updateProgress(
-        `${taskNo++}`,
-        100
-      );
-    }
-
-    // 完成
-    processTitle.value = STAGES_TITLE.COMPLETED;
-    isComplete.value = true;
-
-
-  }
+  task(totalTasks, progressManager, TASK_MODE.UPDATE);
 }
 
 // 进度管理器

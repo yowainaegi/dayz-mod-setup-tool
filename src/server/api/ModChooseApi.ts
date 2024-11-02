@@ -28,6 +28,8 @@ export function getModList(): Promise<ModInfo[]> {
                         const pictureContentResData = await window.ipcRenderer.invoke('serverAPI', 'getPictureContent', cachedPreviewImageObj.FullPath);
                         modInfoList[i].previewImageMain = pictureContentResData.data;
                     }
+                    let modFolderName = `${modInfoList[i].Id.substring(modInfoList[i].Id.indexOf("steam:") + "steam:".length)}-@${modInfoList[i].DisplayName}`;
+                    modInfoList[i].modFolderName = modFolderName;
                 }
                 resolve(modInfoList); 
             });

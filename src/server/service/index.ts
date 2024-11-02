@@ -192,7 +192,7 @@ ipcMain.handle('copyFolderWithProgress', (event, taskId: string, srcPath: string
                 await copyFileWithProgress(file, targetPath, (bytesCopied) => {
                     copiedSize += bytesCopied;
                     const progress = (copiedSize / totalSize) * 100;
-                    event.sender.send(`${taskId}_copyProgress`, progress,  file.substring(file.lastIndexOf(path.sep) + 1), targetPath);
+                    event.sender.send(`${taskId}_generateProgress`, progress,  file.substring(file.lastIndexOf(path.sep) + 1), targetPath);
                 });
             }
     }
@@ -264,7 +264,7 @@ ipcMain.handle('copyMultipleFolders', (event, taskId: string, srcFolders: string
             await copyFileWithProgress(file, targetPath, (bytesCopied) => {
               copiedSize += bytesCopied;
               const progress = (copiedSize / totalSize) * 100;
-              event.sender.send(`${taskId}_copyProgress`, progress, file.substring(file.lastIndexOf(path.sep) + 1), targetPath);
+              event.sender.send(`${taskId}_generateProgress`, progress, file.substring(file.lastIndexOf(path.sep) + 1), targetPath);
             });
           }
         }

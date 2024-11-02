@@ -58,7 +58,7 @@ window.ipcRenderer = {
         let validChannels = ipc.render.receive;
 
         // 如果是汇报进度
-        if(channel && channel.indexOf('_copyProgress') !== -1) {
+        if(channel && channel.indexOf('_generateProgress') !== -1) {
             ipcRenderer.on(channel, (event, ...args) => listener(...args));
         }
         // 判断方法是否认证

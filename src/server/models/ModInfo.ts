@@ -41,4 +41,5 @@ export default interface ModInfo {
     AddedStatus: number; // show status, 0 is subscribed, 1 is added at config file
     SearchedStatus: number; // search status, 0 is be searched, 1 is not be searched
     CanBeRemovedDZMSUTool: boolean;
+    modFolderName: string;
 }

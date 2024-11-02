@@ -304,6 +304,27 @@ const createServerProfileFolder = (serverProfileFolderPath: string) : Promise<st
    });
 }
 
+const createModConfigFolders = (targetPath: string, folders: string[]) => {
+    const resData: ResData = {
+        statusCode: null,
+        data: null
+    }
+   return new Promise((resolve, reject) => {
+    for(let folder of folders) {
+        try {
+            const willBeCreatePath = `${targetPath}${path.sep}${folder}`;
+            fs.mkdirSync(willBeCreatePath, {recursive: true});
+        } catch (err: any) {
+            resData.statusCode = STATUS_CODE.API_ERROR;
+            resData.data = err.toString();
+            reject(JSON.stringify(resData));
+        }
+    }
+    resData.statusCode = STATUS_CODE.SUCCESS;
+    resolve(JSON.stringify(resData));
+   });
+}
+
 /**
  * get previewImage from net
  */
@@ -360,6 +381,7 @@ osServiceHanleMethodMap.set("getStartUpFileContent", getStartUpFileContent);
 osServiceHanleMethodMap.set("overwriteFileContent", overwriteFileContent);
 osServiceHanleMethodMap.set("overwriteStartupFileContent", overwriteStartupFileContent);
 osServiceHanleMethodMap.set("createServerProfileFolder", createServerProfileFolder);
+osServiceHanleMethodMap.set("createModConfigFolders", createModConfigFolders);
 // osServiceHanleMethodMap.set("getModPreviewImage", getModPreviewImage);
 
 
