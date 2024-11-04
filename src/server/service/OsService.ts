@@ -4,6 +4,7 @@ import path from "path";
 import { STATUS_CODE } from "../models/Constant";
 import ResData from "../models/ResData";
 import { app } from "electron";
+import { jsonStringfyToIPCMAINError } from "@/utils/Util";
 // import puppeteer from "puppeteer";
 
 
@@ -28,7 +29,7 @@ const getPathSep = (): Promise<string> => {
                 statusCode: STATUS_CODE.API_ERROR,
                 data: error.message
             }
-            reject(JSON.stringify(resData));
+           reject(jsonStringfyToIPCMAINError(resData));
         }
     });
 }
@@ -49,7 +50,7 @@ const  getOsUserName = (): Promise<string> => {
                 statusCode: STATUS_CODE.API_ERROR,
                 data: error.message
             }
-            reject(JSON.stringify(resData));
+           reject(jsonStringfyToIPCMAINError(resData));
         }
     });
 }
@@ -67,7 +68,7 @@ const getDirectoryPath = (path: string): Promise<string> => {
             if (err) {
                 resData.statusCode = STATUS_CODE.API_ERROR;
                 resData.data = err.message;
-                reject(JSON.stringify(resData));
+               reject(jsonStringfyToIPCMAINError(resData));
             } else {
                 resData.statusCode = STATUS_CODE.SUCCESS;
                 resData.data = dir.path;
@@ -97,7 +98,7 @@ const getFileNameList = (path: string): Promise<string> => {
             if (err) {
                 resData.statusCode = STATUS_CODE.API_ERROR;
                 resData.data = err.message;
-                reject(JSON.stringify(resData));
+               reject(jsonStringfyToIPCMAINError(resData));
             } else {
                 resData.statusCode = STATUS_CODE.SUCCESS;
                 resData.data = files;
@@ -121,7 +122,7 @@ const getFileContent = (path: string): Promise<string> => {
             if (err) {
                 resData.statusCode = STATUS_CODE.API_ERROR;
                 resData.data = err.message;
-                reject(JSON.stringify(resData));
+               reject(jsonStringfyToIPCMAINError(resData));
             } else {
                 resData.statusCode = STATUS_CODE.SUCCESS;
                 resData.data = data;
@@ -145,7 +146,7 @@ const getPictureContent = (path: string): Promise<string> => {
             if (err) {
                 resData.statusCode = STATUS_CODE.API_ERROR;
                 resData.data = err.message;
-                reject(JSON.stringify(resData));
+               reject(jsonStringfyToIPCMAINError(resData));
             } else {
                 resData.statusCode = STATUS_CODE.SUCCESS;
                 resData.data = `data:image/jpeg;base64,${Buffer.from(data).toString('base64')}`;
@@ -189,7 +190,7 @@ const pathCleanValidate = (path: string): Promise<string> => {
             if (err) {
                 resData.statusCode = STATUS_CODE.API_ERROR;
                 resData.data = err.message;
-                reject(JSON.stringify(resData));
+               reject(jsonStringfyToIPCMAINError(resData));
             } else {
                 resData.statusCode = STATUS_CODE.SUCCESS;
                 if(files.length > 0) {
@@ -254,7 +255,7 @@ const overwriteStartupFileContent = (content: string, targetFilePath: string) : 
         if (err) {
             resData.statusCode = STATUS_CODE.API_ERROR;
             resData.data = err.message;
-            reject(JSON.stringify(resData));
+           reject(jsonStringfyToIPCMAINError(resData));
         } else {
             resData.statusCode = STATUS_CODE.SUCCESS;
             resolve(JSON.stringify(resData));
@@ -275,7 +276,7 @@ const overwriteFileContent = (content: string, targetFilePath: string) : Promise
         if (err) {
             resData.statusCode = STATUS_CODE.API_ERROR;
             resData.data = err.message;
-            reject(JSON.stringify(resData));
+           reject(jsonStringfyToIPCMAINError(resData));
         } else {
             resData.statusCode = STATUS_CODE.SUCCESS;
             resolve(JSON.stringify(resData));
@@ -295,7 +296,7 @@ const createServerProfileFolder = (serverProfileFolderPath: string) : Promise<st
         if(err) {
             resData.statusCode = STATUS_CODE.API_ERROR;
             resData.data = err.toString();
-            reject(JSON.stringify(resData));
+           reject(jsonStringfyToIPCMAINError(resData));
         } else {
             resData.statusCode = STATUS_CODE.SUCCESS;
             resolve(JSON.stringify(resData));
@@ -304,7 +305,7 @@ const createServerProfileFolder = (serverProfileFolderPath: string) : Promise<st
    });
 }
 
-const createModConfigFolders = (targetPath: string, folders: string[]) => {
+const createModConfigFolders = (targetPath: string, folders: string[], isMapMod: boolean) => {
     const resData: ResData = {
         statusCode: null,
         data: null
@@ -312,17 +313,85 @@ const createModConfigFolders = (targetPath: string, folders: string[]) => {
    return new Promise((resolve, reject) => {
     for(let folder of folders) {
         try {
-            const willBeCreatePath = `${targetPath}${path.sep}${folder}`;
-            fs.mkdirSync(willBeCreatePath, {recursive: true});
+            if((folder === 'map_missions' && isMapMod) || folder !== 'map_missions') {
+                const willBeCreatePath = `${targetPath}${path.sep}${folder}`;
+                fs.mkdirSync(willBeCreatePath, {recursive: true});
+            }
         } catch (err: any) {
             resData.statusCode = STATUS_CODE.API_ERROR;
             resData.data = err.toString();
-            reject(JSON.stringify(resData));
+           reject(jsonStringfyToIPCMAINError(resData));
         }
     }
     resData.statusCode = STATUS_CODE.SUCCESS;
     resolve(JSON.stringify(resData));
    });
+}
+
+const pathMissionsFolderValidate = (path: string) => {
+    return new Promise((resolve, reject) => {
+        const resData: ResData = {
+            statusCode: null,
+            data: null
+        }
+        fs.readdir(path, {encoding: 'utf-8'}, (err: any, files: any) => {
+            if (err) {
+                resData.statusCode = STATUS_CODE.API_ERROR;
+                resData.data = err.message;
+               reject(jsonStringfyToIPCMAINError(resData));
+            } else {
+                if(files.length !== 1) {
+                    resData.data = null;
+                } else {
+                    if(files[0].indexOf('.') === -1) {
+                        resData.statusCode = STATUS_CODE.API_ERROR;
+                        resData.data = 'the mpmissions folder is not correctly! (do not have .)';
+                        reject(jsonStringfyToIPCMAINError(resData));
+                    } else {
+                        let names = fs.readdirSync(path + PATH_SEP + files[0]);
+                        let condition = 0;
+                        for(let name of names) {
+                            if(name === 'init.c') {
+                                condition ++;
+                            }
+                            if(name === 'db') {
+                                condition ++;
+                            }
+                        }
+                        if(condition === 2) {
+                            resData.statusCode = STATUS_CODE.SUCCESS;
+                            resData.data = files[0];
+                            resolve(JSON.stringify(resData));
+                        } else {
+                            resData.statusCode = STATUS_CODE.API_ERROR;
+                            resData.data = `the mpmissions folder is not correctly! (do not have 'init.c' or 'db')`;
+                           reject(jsonStringfyToIPCMAINError(resData));
+                        }        
+                    }   
+                }
+            }
+
+
+
+            if (err) {
+                resData.statusCode = STATUS_CODE.API_ERROR;
+                resData.data = err.message;
+               reject(jsonStringfyToIPCMAINError(resData));
+            } else {
+                let conditions = 0
+                
+                if(conditions >= 2 && files.includes('init.c')) {
+                    resData.statusCode = STATUS_CODE.SUCCESS;
+                    if(files.length > 0) {
+                        resData.data = false;
+                    } else {
+                        resData.data = true;
+                    }
+                }
+                resolve(JSON.stringify(resData));
+            }
+        });
+    })
 }
 
 /**
@@ -382,6 +451,7 @@ osServiceHanleMethodMap.set("overwriteFileContent", overwriteFileContent);
 osServiceHanleMethodMap.set("overwriteStartupFileContent", overwriteStartupFileContent);
 osServiceHanleMethodMap.set("createServerProfileFolder", createServerProfileFolder);
 osServiceHanleMethodMap.set("createModConfigFolders", createModConfigFolders);
+osServiceHanleMethodMap.set("pathMissionsFolderValidate", pathMissionsFolderValidate);
 // osServiceHanleMethodMap.set("getModPreviewImage", getModPreviewImage);
 
 

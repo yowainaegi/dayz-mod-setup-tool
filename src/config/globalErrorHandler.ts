@@ -2,24 +2,31 @@ import { i18n } from "@/i18n";
 import { Modal } from "ant-design-vue";
 import { APIError, DataBaseError, UnknownError } from "@/server/constants/LogType";
 import ResData from "@/server/models/ResData";
-import { STATUS_CODE } from "@/server/models/Constant";
+import { IPCMAIN_ERROR_PREFIX, STATUS_CODE } from "@/server/models/Constant";
 import { getUUID } from "@/utils/Util";
 import { now } from "@/utils/DateUtils";
 import { transToResData } from "@/utils/ResUtils";
 
 const globalErrorHandler = (error: any) => {
-    let err = null;
     if(typeof error === 'string') {
         processAPIError(error);
     } else {
-        err = error;
-        let resErr: ResData = {
-            statusCode: null,
-            data: null
+        try {
+            if(error.message.indexOf(IPCMAIN_ERROR_PREFIX) !== -1) {
+                const errMsg = error.message.substring(error.message.indexOf('IPCMAINERROR_') + 'IPCMAINERROR_'.length);
+                processAPIError(errMsg);
+            } else {
+                throw new Error(error)
+            }
+        } catch (err: any) {
+            let resErr: ResData = {
+                statusCode: null,
+                data: null
+            }
+            resErr.statusCode = STATUS_CODE.UNKNOWN_ERROR;
+            resErr.data = err.message ? err.message : '';
+            showPopup(resErr, i18n.global.t('common.modal.error.title.UnknownError'), UnknownError, i18n.global.t('common.appLogType.Error.UnknownError'));
         }
-        resErr.statusCode = STATUS_CODE.UNKNOWN_ERROR;
-        resErr.data = err.message ? err.message : '';
-        showPopup(resErr, i18n.global.t('common.modal.error.title.UnknownError'), UnknownError, i18n.global.t('common.appLogType.Error.UnknownError'));
     }
 }
 

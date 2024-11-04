@@ -66,7 +66,7 @@
                 :placeholder="$t('ModChooseView.searchInputPlaceHolder')"
             />
             <a-table
-                :columns="columns"
+                :columns="modAddedColumns"
                 :data-source="filteredModListAdded"
                 :scroll="{ y: tableHeight }"
                 :pagination="false"
@@ -85,6 +85,12 @@
                 <template v-if="column.key === 'action'">
                   <a-button type="primary" size="small" @click="removeToSubscribedList($event, record)" :disabled="record.CanBeRemovedDZMSUTool === false">
                     <DoubleLeftOutlined/>
+                  </a-button>
+                </template>
+                <template v-if="column.key === 'markAsMap'">
+                  <a-button type="primary" size="small" @click="markAsMap($event, record)">
+                      <LineOutlined v-if="!record.isMapMod"/>
+                      <CheckOutlined v-else/>
                   </a-button>
                 </template>
               </template>
@@ -127,7 +133,7 @@
 <script lang="ts" setup>
 import {i18n} from "@/i18n";
 import {useStore} from "vuex";
-import {RightOutlined, DownOutlined, DoubleRightOutlined, DoubleLeftOutlined} from "@ant-design/icons-vue";
+import {RightOutlined, DownOutlined, DoubleRightOutlined, DoubleLeftOutlined, LineOutlined, CheckOutlined} from "@ant-design/icons-vue";
 import {useRouter} from "vue-router";
 import {computed, Ref, ref, watch} from "vue";
 import {getModList, getModIdListByServerConfigFile} from "@/server/api/ModChooseApi";
@@ -159,11 +165,31 @@ const modList_show: Ref<ModInfo[]> = ref([]);
 // 服务器配置文件
 const serverConfigFile:ServerConfigFile  = store.state.selectedConfigFile;
 
+let markedMapModId: string = store.state.markedMapModId;
+
 const columns = [
   {
     title: i18n.global.t('ModChooseView.tableTitle.name'),
     dataIndex: 'DisplayName',
     key: 'DisplayName',
+  },
+  {
+    title: i18n.global.t('ModChooseView.tableTitle.action'),
+    key: 'action',
+    width: 90
+  }
+]
+
+const modAddedColumns = [
+{
+    title: i18n.global.t('ModChooseView.tableTitle.name'),
+    dataIndex: 'DisplayName',
+    key: 'DisplayName',
+  },
+  {
+    title: i18n.global.t('ModChooseView.tableTitle.mapAction'),
+    key: 'markAsMap',
+    width: 90
   },
   {
     title: i18n.global.t('ModChooseView.tableTitle.action'),
@@ -325,10 +351,23 @@ function debounce<T extends (...args: any[]) => any>(fn: T, delay: number): (...
 //   }
 // }
 
+function markAsMap(event: Event, record: ModInfo) {
+  event.stopPropagation();
+  modList_show.value.forEach(mod => {
+    if(mod.Id === record.Id) {
+      mod.isMapMod = !mod.isMapMod;
+      markedMapModId = mod.Id;
+    } else {
+      mod.isMapMod = false;
+    }
+  });
+}
+
 /**
  * 返回
  */
 function back() {
+  store.commit('updateMarkedMapModId', null)
   router.push('/ConfigFileList');
 }
 
@@ -336,7 +375,7 @@ function next() {
   const  modAddedList = modList_show.value.filter((item: ModInfo) => {
     return item.AddedStatus === MOD_LIST_TYPE.ADDED;
   });
-  
+  store.commit('updateMarkedMapModId', markedMapModId)
   if(operationMode === 'create') {
     Modal.confirm({
       icon: '',

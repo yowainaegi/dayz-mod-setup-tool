@@ -8,7 +8,7 @@
     </div>
     <div class="footer-content" v-if="showFoot">
       <a-button @click="back" class="default-btn">{{ $t('EditServerView.back') }}</a-button>
-      <a-button @click="next" type="primary">{{ $t('EditServerView.completedNext') }}</a-button>
+      <a-button @click="next" type="primary">{{ $t('EditServerView.next') }}</a-button>
     </div>
   </div>
 </template>
@@ -42,6 +42,9 @@ let modAddedList: ModInfo[] = store.state.modAddedList;
 const serverConfigFile: ServerConfigFile = store.state.selectedConfigFile;
 
 const operationMode = store.state.operationMode;
+
+// 用来存储在mod文件夹中创建好DAYZ_MOD_SETUP_TOOL_CREATED文件夹路径
+const toolCreatedFolderPathMap: Map<string, string[]> = new Map();
 
 // 更新标题
 if(operationMode === 'create') {
@@ -96,7 +99,8 @@ const MOD_CONFIG_FOLDERS = [
   'globals', // interprets file as globals.xml
   'economy',  // interprets file as economy.xml
   'events', // interprets file as events.xml
-  'messages' // interprets file as messages.xml
+  'messages', // interprets file as messages.xml
+  'map_missions' // map missions folder
 ]
 
 
@@ -145,6 +149,7 @@ async function task(totalTasks: number, progressManager: ProgressManager, mode: 
   class ModsPathObj {
     extensionPath: string = "";
     modFolderName: string = "";
+    isMapMod: boolean = false;
   }
   const modsPathMap: Map<string, ModsPathObj> = new Map();
   // MOD文件夹列表
@@ -153,7 +158,8 @@ async function task(totalTasks: number, progressManager: ProgressManager, mode: 
     modsPathList.push(modAddedList[i].ExtensionPath);
     const obj: ModsPathObj = {
       extensionPath: modAddedList[i].ExtensionPath,
-      modFolderName: modAddedList[i].modFolderName
+      modFolderName: modAddedList[i].modFolderName,
+      isMapMod: modAddedList[i].isMapMod
     }
     modsPathMap.set(modAddedList[i].Id, obj);
   } 
@@ -214,7 +220,20 @@ async function task(totalTasks: number, progressManager: ProgressManager, mode: 
         'serverAPI',
         'createModConfigFolders',
         `${serverConfigFile.server_folder_path}${PATH_SEP}${modsPathMap.get(key)?.modFolderName}${PATH_SEP}DAYZ_MOD_SETUP_TOOL_CREATED`,
-        MOD_CONFIG_FOLDERS)
+        MOD_CONFIG_FOLDERS, modsPathMap.get(key)?.isMapMod)
+
+        const toolCreatedFolderDetailPaths: string[] = [];
+        for(let item of MOD_CONFIG_FOLDERS) {
+          if(item !== 'map_missions') {
+            toolCreatedFolderDetailPaths.push(
+              `${serverConfigFile.server_folder_path}${PATH_SEP}${modsPathMap.get(key)?.modFolderName}${PATH_SEP}DAYZ_MOD_SETUP_TOOL_CREATED${PATH_SEP}${item}`)
+          } else if (item === 'map_missions' && modsPathMap.get(key)?.isMapMod) {
+            toolCreatedFolderDetailPaths.push(
+              `${serverConfigFile.server_folder_path}${PATH_SEP}${modsPathMap.get(key)?.modFolderName}${PATH_SEP}DAYZ_MOD_SETUP_TOOL_CREATED${PATH_SEP}${item}`)
+          }
+        }
+        toolCreatedFolderPathMap.set(`${serverConfigFile.server_folder_path}${PATH_SEP}${modsPathMap.get(key)?.modFolderName}${PATH_SEP}DAYZ_MOD_SETUP_TOOL_CREATED`,toolCreatedFolderDetailPaths)
+        
     }
 
     if(serverConfigFile.server_folder_path && serverConfigFile.server_profile_folder) {
@@ -264,6 +283,7 @@ async function runCreateTasks() {
 
 // 更新服务器
 async function runUpdateTasks() {
+  modAddedList = modAddedList.filter(item => item.CanBeRemovedDZMSUTool)
   const totalTasks = 3 + modAddedList.length;
   const progressManager = new ProgressManager(totalTasks);
   task(totalTasks, progressManager, TASK_MODE.UPDATE);
@@ -300,8 +320,8 @@ async function start() {
 
   // 接收osService报错
   window.ipcRenderer.receive('os-service-process-error', (errMsg: string) => {
-    globalErrorHandler(errMsg);
     showFoot.value = true;
+    globalErrorHandler(errMsg);
   })
 
 
@@ -314,7 +334,7 @@ async function start() {
 
 
 // 开始执行
-start().then(() => {
+start().finally(() => {
   showFoot.value = true;
 })
 
@@ -327,7 +347,8 @@ start().then(() => {
 }
 
 function next() {
-  router.push('/Index')
+  store.commit('updateToolCreatedFolderPathMap', toolCreatedFolderPathMap);
+  router.push('/ModMountConfig')
 }
 </script>
 

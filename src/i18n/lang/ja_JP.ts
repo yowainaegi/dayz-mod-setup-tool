@@ -109,6 +109,7 @@ export default {
         tableTitle: {
             id: 'ID',
             name: 'モード名',
+            mapAction: 'マップ',
             action: 'アクション',
         },
         emptyText: 'モードが見つかりません',
@@ -117,7 +118,7 @@ export default {
         updateWarning: '既存サーバーにMODを追加してください'
     },
     EditServerView: {
-        completedNext: '完了',
+        next: '次へ',
         back: '戻る',
         pageTitle: {
             create: 'サーバー作成',
@@ -134,6 +135,25 @@ export default {
             edit_start_up_file: '起動ファイルを編集しています',
             edit_server_dz_cfg_file: 'serverDZ.cfgを編集しています',
             completed: '完成しました'
+        }
+    },
+    ModMountConfigView: {
+        next: '実行',
+        completedNext: '完了',
+        back: '戻る',
+        pageTitle: 'モードセッティング',
+        copyingContent: "({percent}%) {src} を {dest} にコピーしています",
+        fileFound: "計算中...({processFileCount}個のファイルが見つかりました)",
+        mainContent: {
+            normalText1:'下にあるパスに各種類のファイルを整理してください',
+            importantText: 'あなたのDayZServerパス\/id-＠modname\/DAYZ_MOD_SETUP_TOOL_CREATED\/',
+            normalText2:'既に整理いたしましたら、実行ボタン押してください',
+            attention: '注意：本バージョンは types.xml, spawnabletypes.xml, globals.xml, economy.xml, events.xml, messages.xml しか設定できません'
+        },
+        stagesTitle: {
+            copy_missions_file_to_target_path: 'ミッションファイルをコピーしています',
+            copy_mod_config_xml_to_target_path: 'モードのXMLファイルをコピーしています',
+            completed: '完了'
         }
     },
     LogListView: {

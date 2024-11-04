@@ -109,6 +109,7 @@ export default {
         tableTitle: {
             id: 'ID',
             name: 'Name',
+            mapAction: 'Map',
             action: 'Action',
         },
         emptyText: 'No Mod found',
@@ -117,14 +118,14 @@ export default {
         updateWarning: 'Please add MOD which you want'
     },
     EditServerView: {
-        completedNext: 'Complete',
+        next: 'Next',
         back: 'Back',
         pageTitle: {
             create: 'Create Server',
             update: 'Update Server'
         },
         copyingContent: "({percent}%) copying {src} to {dest}",
-        fileFound: "Calculating...({processFileCount}个文件被发现)",
+        fileFound: "Calculating...({processFileCount} of files be found)",
         stagesTitle: {
             copy_pure_dayz_server_file_to_target_path: 'copying pure DayZ Server',
             copy_addons_to_target_path: 'copying Addons',
@@ -133,6 +134,25 @@ export default {
             create_server_profile_folder: 'creating server profile folder',
             edit_start_up_file: 'editing startup file',
             edit_server_dz_cfg_file: 'editing serverDZ.cfg file',
+            completed: 'completed'
+        }
+    },
+    ModMountConfigView: {
+        next: 'Run',
+        completedNext: 'Finish',
+        back: 'Back',
+        pageTitle: 'Set Mod',
+        copyingContent: "({percent}%) copying {src} to {dest}",
+        fileFound: "Calculating...({processFileCount} of files be found)",
+        mainContent: {
+            normalText1:'Please categorize each config file under the paths below',
+            importantText: 'Paht to your DayZServer\/id-＠modname\/DAYZ_MOD_SETUP_TOOL_CREATED\/',
+            normalText2:'If you already completed, Just run',
+            attention: 'Note: The current version only supports types.xml, spawnabletypes.xml, globals.xml, economy.xml, events.xml, messages.xml'
+        },
+        stagesTitle: {
+            copy_missions_file_to_target_path: 'copying missions file',
+            copy_mod_config_xml_to_target_path: 'copying the xml files of mods',
             completed: 'completed'
         }
     },

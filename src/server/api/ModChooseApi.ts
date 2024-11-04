@@ -3,11 +3,14 @@ import ResData from "@/server/models/ResData";
 import { MOD_BE_SEARCHE_STATUS, MOD_LIST_TYPE, STATUS_CODE } from "@/server/models/Constant";
 import xml2js  from "xml2js";
 import PresetInfo from "@/server/models/PresetInfo";
+import {useStore} from "vuex";
 
 /**
  * 获取模组信息
  */
 export function getModList(): Promise<ModInfo[]> {
+  const store = useStore();
+  const markedMapModId = store.state.markedMapModId;
   return new Promise<ModInfo[]>((resolve) => {
     window.ipcRenderer.invoke('serverAPI', 'getPathSep').then((pathSepData: ResData) => {
         const PATH_SEP = pathSepData.data;
@@ -30,6 +33,11 @@ export function getModList(): Promise<ModInfo[]> {
                     }
                     let modFolderName = `${modInfoList[i].Id.substring(modInfoList[i].Id.indexOf("steam:") + "steam:".length)}-@${modInfoList[i].DisplayName}`;
                     modInfoList[i].modFolderName = modFolderName;
+                    if(markedMapModId === modInfoList[i].Id) {
+                        modInfoList[i].isMapMod = true;
+                    } else {
+                        modInfoList[i].isMapMod = false;
+                    }
                 }
                 resolve(modInfoList); 
             });

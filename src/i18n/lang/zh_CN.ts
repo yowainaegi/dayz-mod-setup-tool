@@ -109,6 +109,7 @@ export default {
         tableTitle: {
             id: 'ID',
             name: '名称',
+            mapAction: '地图',
             action: '操作',
         },
         emptyText: '暂无MOD',
@@ -118,6 +119,7 @@ export default {
     },
     EditServerView: {
         completedNext: '完成',
+        next: '下一步',
         back: '返回',
         pageTitle: {
             create: '创建服务器',
@@ -133,6 +135,25 @@ export default {
             create_server_profile_folder: '创建服务器配置文件夹',
             edit_start_up_file: '编辑启动文件',
             edit_server_dz_cfg_file: '编辑serverDZ.cfg文件',
+            completed: '完成'
+        }
+    },
+    ModMountConfigView: {
+        next: '执行',
+        completedNext: '完成',
+        back: '返回',
+        pageTitle: '配置MOD',
+        copyingContent: "({percent}%) 正在复制 {src} 到 {dest}",
+        fileFound: "计算中...({processFileCount}个文件被发现)",
+        mainContent: {
+            normalText1:'请在下面给出的路径下完成每种配置文件的分类',
+            importantText: '你的DayZServer路径\/id-＠mod名称\/DAYZ_MOD_SETUP_TOOL_CREATED\/',
+            normalText2:'如果你已经完成配置文件的分类，请点击执行',
+            attention: '注：目前版本只支持 types.xml, spawnabletypes.xml, globals.xml, economy.xml, events.xml, messages.xml'
+        },
+        stagesTitle: {
+            copy_missions_file_to_target_path: '正在复制地图missions文件',
+            copy_mod_config_xml_to_target_path: '正在复制Mod的XML配置文件',
             completed: '完成'
         }
     },

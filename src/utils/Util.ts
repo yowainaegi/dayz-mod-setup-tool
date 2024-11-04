@@ -1,3 +1,6 @@
+import { IPCMAIN_ERROR_PREFIX } from "@/server/models/Constant";
+import ResData from "@/server/models/ResData";
+
 /**
  * 获取UUID
  */
@@ -43,4 +46,11 @@ export function deepClone(obj: any): any {
     }
 
     return result;
+}
+
+/**
+ * 转换成ipcmain的错误信息
+ */
+export function jsonStringfyToIPCMAINError(errRes: ResData): string {
+    return `${IPCMAIN_ERROR_PREFIX}${JSON.stringify(errRes)}`;
 }

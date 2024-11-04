@@ -2,9 +2,10 @@ import {ipcMain, ipcRenderer} from "electron";
 import { osServiceHanleMethodMap } from "./OsService";
 import { transToResData } from "@/utils/ResUtils";
 import fs, {promises as pfs} from "fs";
-import path, { resolve } from "path";
+import path from "path";
 import ResData from "../models/ResData";
 import { STATUS_CODE } from "../models/Constant";
+import { jsonStringfyToIPCMAINError } from "@/utils/Util";
 
 // 合并所有的方法
 const handleFunctionsMap = new Map<string, Function>(Object.assign(osServiceHanleMethodMap));
@@ -25,7 +26,7 @@ ipcMain.handle('serverAPI', (_event, functionName: string, ...params: any) => {
                 statusCode: STATUS_CODE.API_ERROR,
                 data: 'function is undefined'
             }
-            reject(JSON.stringify(resData));
+            reject(jsonStringfyToIPCMAINError(resData));
         }
     })
 })
@@ -44,8 +45,8 @@ async function getFilesInFolder(folder: string): Promise<string[]> {
         }
         }));
         return Array.prototype.concat(...files);
-   } catch (err) {
-    return Promise.reject(err);
+   } catch (err: any) {
+    throw new Error(err);
    }
 }
 
@@ -68,7 +69,7 @@ async function countFilesInFolder(event: any, srcPath: string): Promise<void> {
             }
         }
     } catch (err: any) {
-        Promise.reject(err.toString());
+        throw new Error(err);
     }
 }
 
@@ -79,22 +80,12 @@ function copyFileWithProgress(
     targetPath: string,
     onProgress: (bytesCopied: number, currentSrcPath: string, currentTargetPath: string) => void
   ): Promise<void> {
-
-    const resData: ResData = {
-        statusCode: null,
-        data: null
-    }
-    
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       // 确保目标文件夹存在
-      fs.mkdir(path.dirname(targetPath), { recursive: true }, (err) => {
-
+      fs.mkdir(path.dirname(targetPath), { recursive: true }, (err: any) => {
         if (err) {
-            resData.statusCode = STATUS_CODE.API_ERROR;
-            resData.data = err.message;
-            return reject(JSON.stringify(resData));
+           throw new Error(err);
         };
-  
         // 创建读取流和写入流
         const readStream = fs.createReadStream(srcPath);
         const writeStream = fs.createWriteStream(targetPath);
@@ -107,15 +98,13 @@ function copyFileWithProgress(
           onProgress(chunk.length, srcPath, targetPath);  // 更新总进度
         });
   
-        readStream.on('error', (err) => {
-            resData.statusCode = STATUS_CODE.API_ERROR;
-            resData.data = err.message;
-            return reject(JSON.stringify(resData));
+        readStream.on('error', (err: any) => {
+            readStream.close();
+            throw new Error(err);
         });
-        writeStream.on('error', (err) => {
-            resData.statusCode = STATUS_CODE.API_ERROR;
-            resData.data = err.message;
-            return reject(JSON.stringify(resData));
+        writeStream.on('error', (err: any) => {
+            writeStream.close();
+            throw new Error(err);
         });
   
         // 监听写入流的 'finish' 事件
@@ -134,32 +123,40 @@ function copyFileWithProgress(
 // 监听从渲染线程传来的countFiles请求
 ipcMain.handle('countFiles', (event, srcPath: string) => {
     async function countFiles(srcPath: string) {
-        // 读取给定路径的内容
-        const entries = await fs.promises.readdir(srcPath, { withFileTypes: true });
-            
-        // 遍历文件夹中的所有项
-        for (const entry of entries) {
-            const fullPath = path.join(srcPath, entry.name);
+        try {
+            // 读取给定路径的内容
+            const entries = await fs.promises.readdir(srcPath, { withFileTypes: true });
+                
+            // 遍历文件夹中的所有项
+            for (const entry of entries) {
+                const fullPath = path.join(srcPath, entry.name);
 
-            if (entry.isDirectory()) {
-                // 如果是文件夹，则递归计算文件夹中的文件数量
-                await countFiles(fullPath);
-            } else if (entry.isFile()) {
-                // 如果是文件，实时更新文件计数
-                await sleep(1);
-                event.sender.send('countFileProgress', 1);
+                if (entry.isDirectory()) {
+                    // 如果是文件夹，则递归计算文件夹中的文件数量
+                    await countFiles(fullPath);
+                } else if (entry.isFile()) {
+                    // 如果是文件，实时更新文件计数
+                    await sleep(1);
+                    event.sender.send('countFileProgress', 1);
+                }
             }
+        } catch (err: any) {
+            throw new Error(err);
         }
     };
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+        const resData: ResData = {
+            statusCode: null,
+            data: undefined
+        }
         countFiles(srcPath).then(() => {
-            const resData: ResData = {
-                statusCode: null,
-                data: undefined
-            }
             resData.statusCode = STATUS_CODE.SUCCESS;
             resolve(resData)
-        });
+        }).catch((err: any) => {
+            resData.statusCode = STATUS_CODE.API_ERROR;
+            resData.data = err.message;
+            reject(jsonStringfyToIPCMAINError(resData));
+        }) 
     });
 });
 
@@ -207,7 +204,6 @@ ipcMain.handle('copyFolderWithProgress', (event, taskId: string, srcPath: string
         }).catch(error => {
             resData.statusCode = STATUS_CODE.API_ERROR;
             resData.data = error.message;
-            console.log('3')
             event.sender.send('os-service-process-error', JSON.stringify(resData));
         });
     });

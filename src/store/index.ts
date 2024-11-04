@@ -11,7 +11,9 @@ export default createStore({
     routerHistory: [],
     winInfo: null,
     modAddedList: [],
-    operationMode: ''
+    operationMode: '',
+    toolCreatedFolderPathMap: Map<string, string[]>,
+    markedMapModId: '',
   },
 
   // 2、 需要通过计算获取state里的内容获取的数据
@@ -53,6 +55,12 @@ export default createStore({
     },
     updateOperationMode(state, operationMode) {
       state.operationMode = operationMode;
+    },
+    updateToolCreatedFolderPathMap(state, toolCreatedFolderPathMap) {
+      state.toolCreatedFolderPathMap = toolCreatedFolderPathMap;
+    },
+    updateMarkedMapModId(state, markedMapModId) {
+      state.markedMapModId = markedMapModId;
     }
   },
 

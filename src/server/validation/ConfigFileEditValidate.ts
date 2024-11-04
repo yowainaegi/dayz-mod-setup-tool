@@ -8,7 +8,7 @@ import { Rule } from "ant-design-vue/lib/form";
  * 纯净服务器文件夹路路径validate
  */
 export function pureServerFolderPathValidate(_rule: Rule, value: string) {
-    return pathCleanValidate(value);
+    return pathValidate(value);
 }
 
 /**
@@ -55,6 +55,10 @@ function pathCleanValidate(path: string): Promise<void> {
     return new Promise((resolve, reject) => {
         if(path) {
             window.ipcRenderer.invoke('serverAPI', 'pathCleanValidate', path).then((res: ResData) => {
+                if(res.data === false) {
+                    const message = 'the folder is not empty';
+                    reject(message);
+                }
                 resolve();
             }).catch((error: ResData) => {
                 reject(error.data);

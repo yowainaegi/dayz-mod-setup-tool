@@ -43,6 +43,12 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('@/views/EditServerView.vue')
     },
     {
+        path: '/ModMountConfig',
+        name: 'ModMountConfigView',
+        meta: {index: 6},
+        component: () => import('@/views/ModMountConfigView.vue')
+    },
+    {
         path: '/LogList',
         name: 'LogListView',
         meta: {index: 98},

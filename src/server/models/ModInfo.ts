@@ -42,4 +42,5 @@ export default interface ModInfo {
     SearchedStatus: number; // search status, 0 is be searched, 1 is not be searched
     CanBeRemovedDZMSUTool: boolean;
     modFolderName: string;
+    isMapMod: boolean;
 }
