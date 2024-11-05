@@ -74,7 +74,6 @@ class ProgressManager {
 
     // 更新每个任务的进度
     updateProgress(taskId: string, progress: number) {
-        console.log(taskId, progress);
         this.taskProgress.set(taskId, progress);
         this.displayTotalProgress();
     }

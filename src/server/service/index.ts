@@ -226,7 +226,6 @@ ipcMain.handle('countFilesInMultipFolder', (event, srcPaths: string[]) => {
         } catch (err: any) {
             resData.statusCode = STATUS_CODE.API_ERROR;
             resData.data = err.toString();
-            console.log('2')
             event.sender.send('os-service-process-error', JSON.stringify(resData));
         }
     })
@@ -277,7 +276,6 @@ ipcMain.handle('copyMultipleFolders', (event, taskId: string, srcFolders: string
         }).catch((error) => {
             resData.statusCode = STATUS_CODE.API_ERROR;
             resData.data = error.message;
-            console.log('1');
             event.sender.send('os-service-process-error', JSON.stringify(resData));
         });
     })
