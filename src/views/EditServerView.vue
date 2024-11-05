@@ -23,6 +23,7 @@ import ServerConfigFile from "@/server/models/ServerConfigFile";
 import { createServerProfileFolder, editServerDZCfg, editStartBatFile } from "@/server/api/EditServerApi";
 import { globalErrorHandler } from "@/config/globalErrorHandler";
 import { getPathSep } from "@/utils/OsUtils";
+import { modifyMapMissionPathByServerId } from "@/server/sqlite/SqlFuncs/ServerConfigFile";
 
 
 const router = useRouter();
@@ -228,6 +229,9 @@ async function task(totalTasks: number, progressManager: ProgressManager, mode: 
             toolCreatedFolderDetailPaths.push(
               `${serverConfigFile.server_folder_path}${PATH_SEP}${modsPathMap.get(key)?.modFolderName}${PATH_SEP}DAYZ_MOD_SETUP_TOOL_CREATED${PATH_SEP}${item}`)
           } else if (item === 'map_missions' && modsPathMap.get(key)?.isMapMod) {
+            if(serverConfigFile.server_id) {
+              await modifyMapMissionPathByServerId(serverConfigFile.server_id, `${serverConfigFile.server_folder_path}${PATH_SEP}${modsPathMap.get(key)?.modFolderName}${PATH_SEP}DAYZ_MOD_SETUP_TOOL_CREATED${PATH_SEP}${item}`);
+            }
             toolCreatedFolderDetailPaths.push(
               `${serverConfigFile.server_folder_path}${PATH_SEP}${modsPathMap.get(key)?.modFolderName}${PATH_SEP}DAYZ_MOD_SETUP_TOOL_CREATED${PATH_SEP}${item}`)
           }
@@ -247,7 +251,7 @@ async function task(totalTasks: number, progressManager: ProgressManager, mode: 
 
       // TASK 6：编辑启动BAT文件
       processTitle.value = STAGES_TITLE.EDIT_START_UP_FILE;
-        await editStartBatFile(modAddedList, serverConfigFile.deploy_server_folder_path, serverConfigFile.server_profile_folder, false);
+        await editStartBatFile(modAddedList, serverConfigFile.deploy_server_folder_path, serverConfigFile.server_profile_folder, mode === TASK_MODE.UPDATE);
         progressManager.updateProgress(
           `${taskNo++}`,
           100

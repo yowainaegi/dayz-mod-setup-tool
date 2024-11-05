@@ -94,7 +94,7 @@ async function start() {
     // 获取系统路径分隔符
     const PATH_SEP = await getPathSep();
     let missionFolderName = 'dayzOffline.chernarusplus';
-    let currentMissionPath = `${serverConfigFile.server_folder_path}${PATH_SEP}mpmissions${PATH_SEP}dayzOffline.chernarusplus`;
+    let currentMissionPath = `${serverConfigFile.server_folder_path}${PATH_SEP}mpmissions${PATH_SEP}${missionFolderName}`;
 
     // 接收osService报错
     window.ipcRenderer.receive('os-service-process-error', (errMsg: string) => {
@@ -119,7 +119,7 @@ async function start() {
                 mapMissionPath = path;
             }
         }
-    }    
+    }
 
     let totalTasks = 2;
     // 如果找到1个以上的map_mission，报错
@@ -127,6 +127,12 @@ async function start() {
         throw Error("Has more than 1 map mod want to create");
     } else if (mapModCount === 1) {
         totalTasks += partOfTaskCount;
+    } else {
+        if(serverConfigFile.server_map_mission_path) {
+            const validateRes: ResData = await window.ipcRenderer.invoke('serverAPI', 'pathMissionsFolderValidate', serverConfigFile.server_map_mission_path)
+            missionFolderName = validateRes.data;
+            currentMissionPath = `${serverConfigFile.server_folder_path}${PATH_SEP}mpmissions${PATH_SEP}${missionFolderName}`;
+        }
     }
     const progressManager = new ProgressManager(totalTasks);
 
@@ -226,7 +232,7 @@ async function start() {
     }
 
     // TASK
-    // 添加mod配置到CfgeconomycoreXml
+    // 添加mod配置到CfgeconomycoreXml]
     const cfgeconomycoreXmlContent = await getCfgeconomycoreXmlContent(`${currentMissionPath}${PATH_SEP}cfgeconomycore.xml`);
     if(!cfgeconomycoreXmlContent.economycore.ce) {
         cfgeconomycoreXmlContent.economycore.ce = []

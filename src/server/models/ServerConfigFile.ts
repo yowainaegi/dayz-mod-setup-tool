@@ -7,5 +7,6 @@ export default interface ServerConfigFile {
     server_folder_path: string | null,
     deploy_server_folder_path: string | null,
     preset_file_name: string | null,
-    server_profile_folder: string | null
+    server_profile_folder: string | null,
+    server_map_mission_path: string | null
 }

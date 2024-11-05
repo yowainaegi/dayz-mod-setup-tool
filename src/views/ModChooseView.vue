@@ -88,7 +88,7 @@
                   </a-button>
                 </template>
                 <template v-if="column.key === 'markAsMap'">
-                  <a-button type="primary" size="small" @click="markAsMap($event, record)">
+                  <a-button type="primary" size="small" @click="markAsMap($event, record)" :disabled="record.CanBeRemovedDZMSUTool === false">
                       <LineOutlined v-if="!record.isMapMod"/>
                       <CheckOutlined v-else/>
                   </a-button>

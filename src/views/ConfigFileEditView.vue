@@ -80,14 +80,15 @@ if(mode === 'edit') {
 // 配置文件表单
 let configFileForm = ref(reactive<ConfigFile>({
   id: serverIdPK,
-  server_id:  serverIdDate,
-  server_name:  null,
-  config_file_name:  null,
-  pure_server_folder_path:  null,
-  server_folder_path:  null,
-  deploy_server_folder_path:  null,
-  preset_file_name:  null,
-  server_profile_folder:  null
+  server_id: serverIdDate,
+  server_name: null,
+  config_file_name: null,
+  pure_server_folder_path: null,
+  server_folder_path: null,
+  deploy_server_folder_path: null,
+  preset_file_name: null,
+  server_profile_folder: null,
+  server_map_mission_path: null
 }))
 
 // 预设文件列表loading

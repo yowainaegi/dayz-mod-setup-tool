@@ -9,6 +9,11 @@ const sqlite3 = sqlite3Obj.verbose();
 
 
 let DB_PATH = path.join(app.getAppPath(), '.', 'bundled', 'data', 'app.db');
+
+
+
+
+
 // 判断是否是正式环境
 if (app.isPackaged) {
     if(process.platform === 'darwin') {
@@ -27,9 +32,45 @@ if (app.isPackaged) {
             // 如果不存在，初始化数据库或复制初始数据库文件
             const dbOriginalPath = path.join(process.resourcesPath, 'data', 'app.db');
             fs.copyFileSync(dbOriginalPath, DB_PATH);
+        } else {
+            setTimeout(() => {
+                update();
+            })
         }
     }
 }
+
+
+async function update () {
+    // 打开数据库
+    const db = new sqlite3.Database(DB_PATH, sqlite3.OPEN_READWRITE, (err) => {
+        if (err) {
+            console.error('Error opening database:', err.message);
+        } else {
+            console.log('Connected to the database.');
+        }
+    });
+    // 检查版本更新
+    // 有一个新列 `server_map_mission_path`，需要在 `server_config_file` 中存在
+    await db.all("PRAGMA table_info(server_config_file)", async (err, columns) => {
+        if (err) {
+            console.error("Error checking table structure:", err);
+            return;
+        }
+        // 检查列是否已存在
+        const columnExists = columns.some((column:any) => column.name === 'server_map_mission_path');
+        
+        if (!columnExists) {
+            // 如果列不存在，添加新列
+            await db.run("ALTER TABLE server_config_file ADD COLUMN server_map_mission_path TEXT", (err) => {
+                if (err) console.error("Error adding new column:", err);
+                else console.log("New column added successfully.");
+            });
+        }
+    });
+    db.close();
+}
+
 
 // 打开数据库
 const db = new sqlite3.Database(DB_PATH, sqlite3.OPEN_READWRITE, (err) => {
