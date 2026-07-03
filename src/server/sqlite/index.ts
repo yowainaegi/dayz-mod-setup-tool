@@ -8,7 +8,7 @@ import { app } from "electron";
 const sqlite3 = sqlite3Obj.verbose();
 
 
-let DB_PATH = path.join(app.getAppPath(), '.', 'bundled', 'data', 'app.db');
+let DB_PATH = path.join(process.cwd(), 'public', 'data', 'app.db');
 
 
 

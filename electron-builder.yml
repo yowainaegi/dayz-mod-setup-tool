@@ -1,0 +1,25 @@
+productName: DayZModSetupTool
+appId: dayz-mod-setup-tool
+directories:
+  output: dist_electron
+files:
+  - out/**
+extraResources:
+  - from: public/data/app.db
+    to: data/app.db
+  - from: public/resource
+    to: .
+mac:
+  icon: public/app-icons/icons/512x512.png
+win:
+  icon: public/app-icons/icons/512x512.png
+  target:
+    target: portable
+    arch:
+      - x64
+      - ia32
+linux:
+  icon: public/app-icons/icons/512x512.png
+portable:
+  artifactName: ${productName}-${version}.exe
+  requestExecutionLevel: user

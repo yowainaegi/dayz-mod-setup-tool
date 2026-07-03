@@ -2,8 +2,6 @@ import {contextBridge, ipcRenderer} from "electron";
 import ResData from "../models/ResData";
 import { STATUS_CODE } from "../models/Constant";
 
-// window.ipcRenderer = ipcRenderer;
-
 // ipc认证方法
 const ipc = {
     "render": {
@@ -21,6 +19,7 @@ const ipc = {
             "countFileProgress",
             "resetCountFile",
             "os-service-process-error",
+            "winInfo",
         ],
         // From render to main and back again.
         "invoke": [
@@ -36,7 +35,7 @@ const ipc = {
     }
 };
 
-window.ipcRenderer = {
+contextBridge.exposeInMainWorld("ipcRenderer", {
     // From render to main
     send: (channel: any, ...args: any): void => {
         // 获取认证方法数组
@@ -89,4 +88,4 @@ window.ipcRenderer = {
             }
         })
     }
-};
+});

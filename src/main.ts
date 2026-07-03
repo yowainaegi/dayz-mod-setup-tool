@@ -24,10 +24,6 @@ message.config({
 })
 app.use(AntDesign);
 
-// 全局组件
-import {install} from "@/components/global/globalComponentsInstall";
-install(app);
-
 // 全局异常处理
 import { globalErrorHandler } from "@/config/globalErrorHandler";
 window.addEventListener('unhandledrejection', (event) => {
