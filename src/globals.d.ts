@@ -14,7 +14,7 @@ interface Send {
 }
 
 interface Receive {
-    (channel: any, listener: any): void
+    (channel: any, listener: any): () => void
 }
 
 interface Invoke {

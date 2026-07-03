@@ -22,7 +22,8 @@
   },
   "main": "out/main/background.js",
   "dependencies": {
-    "ant-design-vue": "^3.2.20",
+    "@fluentui/svg-icons": "^1.1.331",
+    "ant-design-vue": "^4.2.6",
     "events": "^3.3.0",
     "sqlite3": "^6.0.1",
     "stream-browserify": "^3.0.0",

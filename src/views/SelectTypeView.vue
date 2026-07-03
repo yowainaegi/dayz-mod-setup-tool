@@ -1,9 +1,11 @@
 <template>
   <div id="SelectType" class="view-wrap">
     <div class="view-content view-content-center select-disabled">
-      <h1>{{ $t('SelectTypeView.title') }}</h1>
+      <a-typography-title :level="1">
+        {{ $t('SelectTypeView.title') }}
+      </a-typography-title>
       <div class="btn-area">
-        <a-button class="default-btn" @click="toUpdate">{{ $t('SelectTypeView.update') }}</a-button>
+        <a-button @click="toUpdate">{{ $t('SelectTypeView.update') }}</a-button>
         <a-button type="primary" @click="toCreate">{{ $t('SelectTypeView.create') }}</a-button>
       </div>
     </div>

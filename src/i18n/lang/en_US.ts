@@ -2,8 +2,12 @@ export default {
     common: {
         modal: {
             confirm: {
+                title: 'Confirm',
                 yes: 'Yes',
                 cancel: 'Cancel'
+            },
+            warning: {
+                title: 'Notice'
             },
             error: {
                 title: {

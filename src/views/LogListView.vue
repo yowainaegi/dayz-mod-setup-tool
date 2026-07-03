@@ -13,7 +13,7 @@
       </a-table>
     </div>
     <div class="footer-content">
-      <a-button @click="back" class="default-btn">{{ $t('LogListView.back') }}</a-button>
+      <a-button @click="back">{{ $t('LogListView.back') }}</a-button>
     </div>
   </div>
 </template>

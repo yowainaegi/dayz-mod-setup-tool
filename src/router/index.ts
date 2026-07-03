@@ -66,6 +66,12 @@ const routes: Array<RouteRecordRaw> = [
         meta: {index: 100},
         component: () => import('@/views/InitializationView.vue')
     },
+    {
+        path: '/Dialog',
+        name: 'DialogView',
+        meta: {index: -1, dialog: true},
+        component: () => import('@/views/DialogView.vue')
+    },
 ];
 
 const router = createRouter({
@@ -78,6 +84,10 @@ const router = createRouter({
  */
 router.beforeEach((to: any, from: any, next) => {
     const store = useStore();
+    if (to.meta.dialog) {
+        next();
+        return;
+    }
     if (to.path !== '/Settings' && to.path !== '/LogList') {
         if (to.path === '/') {
             store.commit('updateRouterHistory', [to.path]);

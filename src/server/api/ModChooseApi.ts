@@ -2,7 +2,6 @@ import ModInfo from "@/server/models/ModInfo";
 import ResData from "@/server/models/ResData";
 import { MOD_BE_SEARCHE_STATUS, MOD_LIST_TYPE, STATUS_CODE } from "@/server/models/Constant";
 import xml2js  from "xml2js";
-import PresetInfo from "@/server/models/PresetInfo";
 import {useStore} from "vuex";
 
 /**
@@ -66,13 +65,44 @@ export function getModIdListByServerConfigFile(presetFilePath: string): Promise<
                     resData.data = err.message;
                     reject(JSON.stringify(resData));
                 } else {
-                    const presetFileInfo: PresetInfo =  xml2jsResult;
-                    const idList  = presetFileInfo.addonsPresets.publishedIds[0].id;
-                    resolve(idList)
+                    resolve(parsePresetModIds(xml2jsResult))
                 }
             });
+        }).catch((error: ResData) => {
+            reject(error);
         });
     })
+}
+
+function parsePresetModIds(xml2jsResult: any): string[] {
+    const publishedIds = toArray(xml2jsResult?.addonsPresets?.publishedIds);
+    const rawIdList = publishedIds.flatMap((publishedId: any) => toArray(publishedId?.id));
+    const normalizedIdList = rawIdList
+        .map((id: any) => normalizeSteamId(id))
+        .filter((id: string | null): id is string => id !== null);
+
+    return Array.from(new Set(normalizedIdList));
+}
+
+function normalizeSteamId(id: any): string | null {
+    if (typeof id !== 'string' && typeof id !== 'number') {
+        return null;
+    }
+
+    const idText = String(id).trim();
+    if (idText.length === 0) {
+        return null;
+    }
+
+    return idText.startsWith('steam:') ? idText : `steam:${idText}`;
+}
+
+function toArray<T>(value: T | T[] | null | undefined): T[] {
+    if (value === null || value === undefined) {
+        return [];
+    }
+
+    return Array.isArray(value) ? value : [value];
 }
 
 

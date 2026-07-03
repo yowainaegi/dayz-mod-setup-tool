@@ -39,15 +39,15 @@
         </a-form-item>
         <a-form-item :label="$t('SettingsView.RelatedPaths.pathCheck')">
           <label  v-if="checkPathStatus === 'success'">
-            <CheckCircleTwoTone twoToneColor="#52c41a" />
+            <FluentIcon name="checkmark-circle" color="#52c41a" />
             <span style="color: #52c41a;  margin-left: 5px">{{ $t('SettingsView.RelatedPaths.pathCheckSuccess') }}</span>
           </label>
           <label v-if="checkPathStatus === 'failed'" >
-            <CloseCircleTwoTone twoToneColor="#f5222d" />
+            <FluentIcon name="dismiss-circle" color="#f5222d" />
             <span style="color: #f5222d; margin-left: 5px">{{ $t('SettingsView.RelatedPaths.pathCheckFailed') }}</span>
           </label>
           <label v-if="checkPathStatus === 'checking'" >
-            <LoadingOutlined/>
+            <FluentIcon name="spinner" spin />
             <span style="margin-left: 5px">{{ $t('SettingsView.RelatedPaths.pathChecking') }}</span>
           </label>
           <a-button type="primary" size="small" style="float: right" @click="checkPath">
@@ -61,14 +61,13 @@
     </div>
 
     <div class="footer-content">
-      <a-button @click="quit" class="default-btn">{{ $t('SettingsView.back') }}</a-button>
+      <a-button @click="quit">{{ $t('SettingsView.back') }}</a-button>
       <a-button @click="apply" type="primary" :loading="applyLoading">{{ $t('SettingsView.apply') }}</a-button>
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { CheckCircleTwoTone, CloseCircleTwoTone, LoadingOutlined } from '@ant-design/icons-vue';
 import { i18n } from "@/i18n";
 import { useRouter } from "vue-router";
 import { useStore } from "vuex";
@@ -77,6 +76,7 @@ import { getAppConfigByConfigName, updateAppConfigByConfigName } from "@/server/
 import { getWindowsUserName, getDayZLauncherDataFolderPath, getPresetFileFolderPath } from "@/server/api/SettingsApi";
 import { Ref, ref } from 'vue';
 import AppConfig from '@/server/models/AppConfig';
+import FluentIcon from "@/components/common/FluentIcon/index.vue";
 
 interface ReloatedPath {
   // 系统用户

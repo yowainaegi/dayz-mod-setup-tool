@@ -30,7 +30,11 @@ const ipc = {
             "countFiles",
             "copyFolderWithProgress",
             "countFilesInMultipFolder",
-            "copyMultipleFolders"
+            "copyMultipleFolders",
+            "copyFoldersWithProgress",
+            "showNativeDialog",
+            "getNativeDialogOptions",
+            "closeNativeDialog"
         ]
     }
 };
@@ -52,17 +56,20 @@ contextBridge.exposeInMainWorld("ipcRenderer", {
         }
     },
     // From main to render
-    receive: (channel: any, listener: any): void => {
+    receive: (channel: any, listener: any): (() => void) => {
         // 获取认证方法数组
         let validChannels = ipc.render.receive;
+        const wrappedListener = (_event: any, ...args: any[]) => listener(...args);
 
         // 如果是汇报进度
         if(channel && channel.indexOf('_generateProgress') !== -1) {
-            ipcRenderer.on(channel, (event, ...args) => listener(...args));
+            ipcRenderer.on(channel, wrappedListener);
+            return () => ipcRenderer.removeListener(channel, wrappedListener);
         }
         // 判断方法是否认证
         else if (validChannels.includes(channel)) {
-            ipcRenderer.on(channel, (event, ...args) => listener(...args));
+            ipcRenderer.on(channel, wrappedListener);
+            return () => ipcRenderer.removeListener(channel, wrappedListener);
         }else {
             const resData: ResData = {
                 statusCode: STATUS_CODE.API_ERROR,

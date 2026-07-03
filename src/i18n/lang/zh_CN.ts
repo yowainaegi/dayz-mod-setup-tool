@@ -2,8 +2,12 @@ export default {
     common: {
         modal: {
             confirm: {
+                title: '确认',
                 yes: '确定',
                 cancel: '取消'
+            },
+            warning: {
+                title: '提示'
             },
             error: {
                 title: {
