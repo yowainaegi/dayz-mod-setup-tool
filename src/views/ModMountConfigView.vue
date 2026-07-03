@@ -14,7 +14,7 @@
             </div>
         </div>
         <div class="footer-content" v-if="isFooterShow">
-            <a-button @click="back" class="default-btn">{{ $t('ModMountConfigView.back') }}</a-button>
+            <a-button @click="back">{{ $t('ModMountConfigView.back') }}</a-button>
             <a-button @click="next" type="primary" v-if="!isComplete">{{ $t('ModMountConfigView.next') }}</a-button>
             <a-button @click="completedNext" type="primary" v-if="isComplete">{{ $t('ModMountConfigView.completedNext') }}</a-button>
         </div>

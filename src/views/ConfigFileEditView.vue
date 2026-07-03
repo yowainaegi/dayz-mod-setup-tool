@@ -35,7 +35,7 @@
           <label>{{ configFileForm.server_id }}</label>
         </a-form-item>
         <div class="footer-content">
-          <a-button @click="back" class="default-btn">{{ $t('ConfigFileEditView.back') }}</a-button>
+          <a-button @click="back">{{ $t('ConfigFileEditView.back') }}</a-button>
           <a-button html-type="submit" type="primary">{{ $t('ConfigFileEditView.save') }}</a-button>
         </div>
       </a-form>

@@ -142,6 +142,7 @@ const quit = () => {
 
 .title {
   padding-left: 10px;
+  color: var(--app-color-text-heading);
 }
 
 .page-title {
@@ -149,6 +150,7 @@ const quit = () => {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
+  color: var(--app-color-text-heading);
 }
 
 .traffics {
@@ -163,7 +165,7 @@ const quit = () => {
   .icon {
     width: 35px;
     font-size: 13px;
-    color: @text-color;
+    color: var(--app-color-text);
   }
   .unmaximize {
     transform: rotate(90deg);

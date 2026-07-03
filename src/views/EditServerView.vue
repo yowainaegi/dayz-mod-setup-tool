@@ -7,7 +7,7 @@
       <div v-if="isCounting && !isComplete">{{ $t('EditServerView.fileFound', { processFileCount } ) }}</div>
     </div>
     <div class="footer-content" v-if="showFoot">
-      <a-button @click="back" class="default-btn">{{ $t('EditServerView.back') }}</a-button>
+      <a-button @click="back">{{ $t('EditServerView.back') }}</a-button>
       <a-button @click="next" type="primary">{{ $t('EditServerView.next') }}</a-button>
     </div>
   </div>

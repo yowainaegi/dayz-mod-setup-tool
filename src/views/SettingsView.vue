@@ -61,7 +61,7 @@
     </div>
 
     <div class="footer-content">
-      <a-button @click="quit" class="default-btn">{{ $t('SettingsView.back') }}</a-button>
+      <a-button @click="quit">{{ $t('SettingsView.back') }}</a-button>
       <a-button @click="apply" type="primary" :loading="applyLoading">{{ $t('SettingsView.apply') }}</a-button>
     </div>
   </div>

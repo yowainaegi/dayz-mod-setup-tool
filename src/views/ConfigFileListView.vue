@@ -4,7 +4,7 @@
       <div style="margin-bottom: 16px">
         <a-input v-model:value="searchValue" size="middle" @keyup.enter="searchConfigFile()" :placeholder="$t('ConfigFileListView.searchKey')">
           <template #addonBefore>
-            <a-button size="middle" class="default-btn" @click="createConfigFile">
+            <a-button size="middle" @click="createConfigFile">
               <template #icon>
                 <PlusOutlined />
               </template>
@@ -61,7 +61,7 @@
       </div>
     </div>
     <div class="footer-content">
-      <a-button @click="back" class="default-btn">{{ $t('ConfigFileListView.back') }}</a-button>
+      <a-button @click="back">{{ $t('ConfigFileListView.back') }}</a-button>
       <a-button @click="next" type="primary">{{ $t('ConfigFileListView.next') }}</a-button>
     </div>
   </div>

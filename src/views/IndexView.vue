@@ -1,9 +1,9 @@
 <template>
   <div id="index" class="view-wrap">
     <div class="view-content view-content-center">
-      <h1 class="title select-disabled">
+      <a-typography-title :level="1" class="title select-disabled">
         {{ $t('IndexView.title') }}
-      </h1>
+      </a-typography-title>
       <div class="btn-area">
         <router-link to="/SelectType">
           <a-button type="primary">Get Start!</a-button>

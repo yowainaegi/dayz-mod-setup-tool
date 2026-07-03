@@ -1,16 +1,16 @@
 <template>
-  <div id="app">
-    <TopNavBar :pageTitle="pageTitle"></TopNavBar>
-    <!-- border-bottom: 1px solid @border-color-dark; -->
-    <a-divider class="divider" style="height: 1px; margin: 0;"/>
-    <a-config-provider :getPopupContainer="getPopupContainer">
+  <a-config-provider :getPopupContainer="getPopupContainer" :theme="antdTheme">
+    <div id="app" :style="appThemeStyle">
+      <TopNavBar :pageTitle="pageTitle"></TopNavBar>
+      <!-- border-bottom: 1px solid @border-color-dark; -->
+      <a-divider class="divider" style="height: 1px; margin: 0;"/>
       <router-view v-slot="{ Component }" ref="routerView">
         <transition :name="transitionName">
           <component class="component" :is="Component" />
         </transition>
       </router-view>
-    </a-config-provider>
-  </div>
+    </div>
+  </a-config-provider>
 </template>
 
 <script lang="ts" setup>
@@ -18,6 +18,7 @@ import { computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useStore } from "vuex";
 import TopNavBar from "@/components/global/TopNavBar/index.vue";
+import { antdTheme, appThemeTokens } from "@/styles/antdTheme";
 
 const router  = useRouter();
 const store = useStore();
@@ -26,6 +27,14 @@ let transitionName: string;
 
 // 使用 computed 和 store.state.pageTitle 创建计算属性
 const pageTitle = computed(() => store.state.pageTitle);
+
+const appThemeStyle = computed(() => ({
+  "--app-color-text": appThemeTokens.colorText,
+  "--app-color-text-heading": appThemeTokens.colorTextHeading,
+  "--app-color-bg": appThemeTokens.colorBgBase,
+  color: appThemeTokens.colorText,
+  backgroundColor: appThemeTokens.colorBgBase,
+}));
 
 
 // 监听路由变化

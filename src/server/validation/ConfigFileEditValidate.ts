@@ -2,7 +2,7 @@ import { i18n } from "@/i18n/index";
 import { recordLog } from "@/server/sqlite/SqlFuncs/common/common";
 import { APIError } from "@/server/constants/LogType";
 import ResData from "@/server/models/ResData";
-import { Rule } from "ant-design-vue/lib/form";
+import type { Rule } from "ant-design-vue/es/form";
 
 /**
  * 纯净服务器文件夹路路径validate

@@ -124,7 +124,7 @@
       </a-row>
     </div>
     <div class="footer-content">
-      <a-button @click="back" class="default-btn">{{ $t('ModChooseView.back') }}</a-button>
+      <a-button @click="back">{{ $t('ModChooseView.back') }}</a-button>
       <a-button @click="next" type="primary">{{ operationMode === 'create'? $t('ModChooseView.createNext'):$t('ModChooseView.updateNext')  }}</a-button>
     </div>
   </div>
