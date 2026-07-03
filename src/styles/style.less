@@ -56,6 +56,26 @@
     background: @mouse-hover-color-base;
 }
 
+.ant-select-dropdown {
+    background-color: @dropdown-menu-bg;
+    color: @text-color;
+
+    .ant-select-item {
+        color: @text-color;
+    }
+
+    .ant-select-item-option-active:not(.ant-select-item-option-disabled),
+    .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+        background-color: @mouse-hover-color-base;
+        color: @heading-color;
+    }
+
+    .ant-select-item-empty,
+    .ant-empty-description {
+        color: @text-color;
+    }
+}
+
 .ant-card-cover {
     background-color: @card-image-bg;
 }

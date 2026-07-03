@@ -2,6 +2,20 @@ import {app, BrowserWindow, ipcMain, nativeImage} from "electron";
 import path from "path";
 const isDevelopment = !app.isPackaged;
 
+interface AppDialogOptions {
+  type?: 'none' | 'info' | 'error' | 'question' | 'warning';
+  title?: string;
+  message?: string;
+  detail?: string;
+  buttons?: string[];
+  defaultId?: number;
+  cancelId?: number;
+}
+
+interface AppDialogResult {
+  response: number;
+}
+
 // nodejs服务端API
 import "@/server/service/index";
 // db操作API
@@ -9,6 +23,7 @@ import "@/server/sqlite/index";
 
 let win: BrowserWindow;
 let winDefaultPosition: number[];
+const dialogOptionsByWebContentsId = new Map<number, Required<AppDialogOptions>>();
 
 async function createWindow() {
   // Create the browser window.
@@ -18,6 +33,8 @@ async function createWindow() {
     resizable: true,
     show: false,
     frame: false,
+    hasShadow: true,
+    thickFrame: true,
     minWidth: 1024,
     minHeight: 670,
     webPreferences: {
@@ -48,6 +65,7 @@ async function createWindow() {
 
   // 避免白屏
   win.once('ready-to-show', () => {
+    win.setHasShadow(true);
     win.show();
     // 记住win的位置
     winDefaultPosition = win.getPosition();
@@ -139,6 +157,98 @@ ipcMain.handle('winInfo', (_event, _message) => {
 // 是否最大化
 ipcMain.handle('isMaximized', (_event) => {
   return win.isMaximized();
+})
+
+ipcMain.handle('showNativeDialog', async (_event, options: AppDialogOptions): Promise<AppDialogResult> => {
+  const dialogOptions: Required<AppDialogOptions> = {
+    type: options?.type ?? 'none',
+    title: options?.title ?? app.name,
+    message: options?.message ?? options?.title ?? '',
+    detail: options?.detail ?? '',
+    buttons: options?.buttons ?? ['OK'],
+    defaultId: options?.defaultId ?? 0,
+    cancelId: options?.cancelId ?? 0,
+  };
+
+  return new Promise<AppDialogResult>((resolve) => {
+    const parentWindow = win && !win.isDestroyed() ? win : undefined;
+    const dialogWidth = 388;
+    const dialogHeight = 192;
+    const parentBounds = parentWindow?.getBounds();
+    const dialogPosition = parentBounds
+      ? {
+          x: Math.round(parentBounds.x + (parentBounds.width - dialogWidth) / 2),
+          y: Math.round(parentBounds.y + (parentBounds.height - dialogHeight) / 2),
+        }
+      : undefined;
+    const dialogWindow = new BrowserWindow({
+      width: dialogWidth,
+      height: dialogHeight,
+      x: dialogPosition?.x,
+      y: dialogPosition?.y,
+      parent: parentWindow,
+      modal: true,
+      show: false,
+      frame: false,
+      hasShadow: true,
+      thickFrame: true,
+      resizable: false,
+      minimizable: false,
+      maximizable: false,
+      fullscreenable: false,
+      backgroundColor: '#3d3d3d',
+      title: dialogOptions.title,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: path.join(__dirname, "../preload/preload.js")
+      },
+    });
+
+    let resolved = false;
+    const webContentsId = dialogWindow.webContents.id;
+    const responseChannel = `app-dialog-response-${webContentsId}`;
+    dialogOptionsByWebContentsId.set(webContentsId, dialogOptions);
+
+    const finish = (response: number) => {
+      if (resolved) {
+        return;
+      }
+      resolved = true;
+      dialogOptionsByWebContentsId.delete(webContentsId);
+      ipcMain.removeListener(responseChannel, handleDialogResponse);
+      resolve({ response });
+      if (!dialogWindow.isDestroyed()) {
+        dialogWindow.close();
+      }
+    };
+
+    const handleDialogResponse = (_responseEvent: Electron.IpcMainEvent, response: number) => {
+      finish(response);
+    };
+
+    dialogWindow.once('ready-to-show', () => {
+      dialogWindow.setHasShadow(true);
+      dialogWindow.show();
+    });
+    dialogWindow.on('closed', () => finish(dialogOptions.cancelId));
+
+    ipcMain.once(responseChannel, handleDialogResponse);
+
+    if (process.env.ELECTRON_RENDERER_URL) {
+      dialogWindow.loadURL(`${process.env.ELECTRON_RENDERER_URL}/#/Dialog`);
+    } else {
+      dialogWindow.loadFile(path.join(__dirname, "../renderer/index.html"), { hash: 'Dialog' });
+    }
+  });
+})
+
+ipcMain.handle('getNativeDialogOptions', (event) => {
+  return dialogOptionsByWebContentsId.get(event.sender.id);
+})
+
+ipcMain.handle('closeNativeDialog', (event, response: number) => {
+  ipcMain.emit(`app-dialog-response-${event.sender.id}`, event, response);
 })
 
 /* ipcMain处理事件 结束 */

@@ -11,8 +11,8 @@
 import { ref } from "vue";
 import { getWindowsUserName, getDayZLauncherDataFolderPath } from "@/server/api/SettingsApi";
 import {useRouter} from "vue-router";
-import {Modal} from "ant-design-vue";
 import {i18n} from "@/i18n";
+import { errorNativeDialog } from "@/utils/nativeDialog";
 
 
 const router = useRouter();
@@ -31,15 +31,13 @@ getWindowsUserName().then((osUserName: string) => {
     router.push('/Index')
   }).catch((err: any) => {
     checkStatus.value = 'checkFailed'
-    Modal.error({
-      centered: true,
+    errorNativeDialog({
       title: i18n.global.t('common.modal.error.title.UnknownError'),
-      content: i18n.global.t('InitializationView.messageContent'),
+      message: i18n.global.t('InitializationView.messageContent'),
       okText: i18n.global.t('InitializationView.messageBoxOkBtn'),
-      onOk: () => {
-        opacity.value = 0
-        router.push('/Settings')
-      }
+    }).then(() => {
+      opacity.value = 0
+      router.push('/Settings')
     })
   })
 })

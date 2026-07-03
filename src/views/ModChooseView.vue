@@ -15,18 +15,16 @@
                 :expand-row-by-click="true">
               <template #expandIcon="props">
                 <transition name="icon_down_rotate">
-                  <DownOutlined v-if="props.expanded" @click="props.onExpand(props.record)">
-                  </DownOutlined>
+                  <FluentIcon v-if="props.expanded" name="chevron-down" @click="props.onExpand(props.record)" />
                 </transition>
                 <transition name="icon_right_rotate">
-                  <RightOutlined v-if="!props.expanded" @click="props.onExpand(props.record)">
-                  </RightOutlined>
+                  <FluentIcon v-if="!props.expanded" name="chevron-right" @click="props.onExpand(props.record)" />
                 </transition>
               </template>
               <template #bodyCell="{record, column}">
                 <template v-if="column.key === 'action'">
                   <a-button type="primary" size="small" @click="addToInstalledList($event, record)">
-                    <DoubleRightOutlined/>
+                    <FluentIcon name="arrow-right" />
                   </a-button>
                 </template>
               </template>
@@ -73,24 +71,22 @@
                 :expand-row-by-click="true">
               <template #expandIcon="props">
                 <transition name="icon_down_rotate">
-                  <DownOutlined v-if="props.expanded" @click="props.onExpand(props.record)">
-                  </DownOutlined>
+                  <FluentIcon v-if="props.expanded" name="chevron-down" @click="props.onExpand(props.record)" />
                 </transition>
                 <transition name="icon_right_rotate">
-                  <RightOutlined v-if="!props.expanded" @click="props.onExpand(props.record)">
-                  </RightOutlined>
+                  <FluentIcon v-if="!props.expanded" name="chevron-right" @click="props.onExpand(props.record)" />
                 </transition>
               </template>
               <template #bodyCell="{record, column}">
                 <template v-if="column.key === 'action'">
                   <a-button type="primary" size="small" @click="removeToSubscribedList($event, record)" :disabled="record.CanBeRemovedDZMSUTool === false">
-                    <DoubleLeftOutlined/>
+                    <FluentIcon name="arrow-left" />
                   </a-button>
                 </template>
                 <template v-if="column.key === 'markAsMap'">
                   <a-button type="primary" size="small" @click="markAsMap($event, record)" :disabled="record.CanBeRemovedDZMSUTool === false">
-                      <LineOutlined v-if="!record.isMapMod"/>
-                      <CheckOutlined v-else/>
+                      <FluentIcon v-if="!record.isMapMod" name="line-horizontal" />
+                      <FluentIcon v-else name="checkmark" />
                   </a-button>
                 </template>
               </template>
@@ -133,7 +129,6 @@
 <script lang="ts" setup>
 import {i18n} from "@/i18n";
 import {useStore} from "vuex";
-import {RightOutlined, DownOutlined, DoubleRightOutlined, DoubleLeftOutlined, LineOutlined, CheckOutlined} from "@ant-design/icons-vue";
 import {useRouter} from "vue-router";
 import {computed, Ref, ref, watch} from "vue";
 import {getModList, getModIdListByServerConfigFile} from "@/server/api/ModChooseApi";
@@ -141,7 +136,8 @@ import ModInfo from "@/server/models/ModInfo";
 import ServerConfigFile from "@/server/models/ServerConfigFile";
 import { deepClone } from "@/utils/Util";
 import { MOD_BE_SEARCHE_STATUS, MOD_LIST_TYPE } from "@/server/models/Constant";
-import { Modal } from "ant-design-vue";
+import FluentIcon from "@/components/common/FluentIcon/index.vue";
+import { confirmNativeDialog, warningNativeDialog } from "@/utils/nativeDialog";
 // import { getModPreviewImage } from "@/utils/OsUtils";
 
 
@@ -371,24 +367,22 @@ function back() {
   router.push('/ConfigFileList');
 }
 
-function next() {
+async function next() {
   const  modAddedList = modList_show.value.filter((item: ModInfo) => {
     return item.AddedStatus === MOD_LIST_TYPE.ADDED;
   });
   store.commit('updateMarkedMapModId', markedMapModId)
   if(operationMode === 'create') {
-    Modal.confirm({
-      icon: '',
-      title: i18n.global.t('ModChooseView.createConfirm'),
-      okText: i18n.global.t('common.modal.confirm.yes'),
+    const confirmed = await confirmNativeDialog({
+      title: i18n.global.t('common.modal.confirm.title'),
+      message: i18n.global.t('ModChooseView.createConfirm'),
+      confirmText: i18n.global.t('common.modal.confirm.yes'),
       cancelText: i18n.global.t('common.modal.confirm.cancel'),
-      centered: true,
-      bodyStyle: {"text-align": "center"},
-      onOk: () => {
-        store.commit('updateModAddedList', modAddedList);
-        router.push('/EditServer');    
-      }
     })
+    if (confirmed) {
+      store.commit('updateModAddedList', modAddedList);
+      router.push('/EditServer');
+    }
   } else {
 
     let hasUpdateMod = false;
@@ -399,24 +393,22 @@ function next() {
       }
     }
     if(!hasUpdateMod) {
-      Modal.warning({
-        title: i18n.global.t('ModChooseView.updateWarning'),
-        centered: true,
+      await warningNativeDialog({
+        title: i18n.global.t('common.modal.warning.title'),
+        message: i18n.global.t('ModChooseView.updateWarning'),
         okText: i18n.global.t('common.modal.confirm.yes')
       })
     } else {
-      Modal.confirm({
-      icon: '',
-      title: i18n.global.t('ModChooseView.updateConfirm'),
-      okText: i18n.global.t('common.modal.confirm.yes'),
-      cancelText: i18n.global.t('common.modal.confirm.cancel'),
-      centered: true,
-      bodyStyle: {"text-align": "center"},
-      onOk: () => {
+      const confirmed = await confirmNativeDialog({
+        title: i18n.global.t('common.modal.confirm.title'),
+        message: i18n.global.t('ModChooseView.updateConfirm'),
+        confirmText: i18n.global.t('common.modal.confirm.yes'),
+        cancelText: i18n.global.t('common.modal.confirm.cancel'),
+      })
+      if (confirmed) {
         store.commit('updateModAddedList', modAddedList);
-        router.push('/EditServer');    
+        router.push('/EditServer');
       }
-    })
     }
   }
 }

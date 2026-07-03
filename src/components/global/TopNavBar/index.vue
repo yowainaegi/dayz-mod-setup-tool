@@ -11,44 +11,44 @@
     </transition>
     <div class="traffics">
       <div class="traffic-icon" @click="log">
-        <FileTextOutlined class="icon" />
+        <FluentIcon name="document" class="icon" />
       </div>
 
       <div class="traffic-icon" @click="settings">
-        <SettingOutlined class="icon" />
+        <FluentIcon name="settings" class="icon" />
       </div>
 
       <div class="traffic-icon" @click="resize">
-        <AppstoreOutlined class="icon" />
+        <FluentIcon name="arrow-autofit-content" class="icon" />
       </div>
 
       <div class="traffic-icon" @click="minimize">
-        <MinusOutlined class="icon" />
+        <FluentIcon name="subtract" class="icon" />
       </div>
 
       <div class="traffic-icon" @click="maximize">
-        <div v-if="!isMaximized">
-          <BorderOutlined class="icon" />
-        </div>
-        <div v-if="isMaximized">
-          <BlockOutlined class="icon unmaximize" />
-        </div>
+        <template v-if="!isMaximized">
+          <FluentIcon name="square" class="icon" />
+        </template>
+        <template v-else>
+          <FluentIcon name="square-multiple" class="icon" />
+        </template>
       </div>
 
       <div class="traffic-icon" @click="quit()">
-        <CloseOutlined class="icon" />
+        <FluentIcon name="dismiss" class="icon" />
       </div>
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { Modal } from 'ant-design-vue';
-import { MinusOutlined, BorderOutlined, FileTextOutlined, SettingOutlined, CloseOutlined, BlockOutlined, AppstoreOutlined } from '@ant-design/icons-vue';
 import { i18n } from '@/i18n';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import {useStore} from "vuex";
+import FluentIcon from '@/components/common/FluentIcon/index.vue';
+import { confirmNativeDialog } from '@/utils/nativeDialog';
 
 // 路由
 const router = useRouter();
@@ -104,20 +104,15 @@ const maximize = () => {
 
 // 退出程序
 const quit = () => {
-  Modal.confirm({
-    okText: i18n.global.t('common.modal.confirm.yes'),
+  confirmNativeDialog({
+    title: i18n.global.t('common.modal.confirm.title'),
+    message: i18n.global.t('components.TopNavBar.quitConfirm'),
+    confirmText: i18n.global.t('common.modal.confirm.yes'),
     cancelText: i18n.global.t('common.modal.confirm.cancel'),
-    title: i18n.global.t('components.TopNavBar.quitConfirm'),
-    icon: '',
-    content: '',
-    centered: true,
-    bodyStyle: {"text-align": "center"},
-    onOk() {
+  }).then((confirmed) => {
+    if (confirmed) {
       window.ipcRenderer.send('quitApplication', null);
-    },
-    onCancel() {
-      // this.visible = false;
-    },
+    }
   });
 }
 </script>
@@ -126,50 +121,65 @@ const quit = () => {
 @import "@/styles/themes/dark.less";
 
 .logo {
-  width: 5%;
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
 }
 
 .top-nav-bar {
   height: 40px;
   -webkit-app-region: drag;
-  line-height: 40px;
-}
-
-.title,
-.traffics {
-  display: inline-block;
+  display: flex;
+  align-items: center;
+  position: relative;
 }
 
 .title {
+  height: 100%;
   padding-left: 10px;
+  display: flex;
+  align-items: center;
   color: var(--app-color-text-heading);
 }
 
 .page-title {
-  display: inline-block;
-  position: fixed;
+  position: absolute;
+  top: 0;
   left: 50%;
+  height: 40px;
+  line-height: 40px;
   transform: translateX(-50%);
   color: var(--app-color-text-heading);
 }
 
 .traffics {
-  float: right;
+  height: 100%;
+  margin-left: auto;
+  display: flex;
+  align-items: stretch;
 }
 
 .traffic-icon {
-  display: inline-block;
-  text-align: center;
-  padding: 0 5px 0 5px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-sizing: border-box;
   -webkit-app-region: no-drag;
+
   .icon {
-    width: 35px;
+    width: 1em;
+    height: 1em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     font-size: 13px;
     color: var(--app-color-text);
   }
-  .unmaximize {
-    transform: rotate(90deg);
-  }
+
 }
 
 .traffic-icon:hover {
@@ -185,10 +195,18 @@ const quit = () => {
   background-color: @error-color;
 }
 
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.5s;
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.25s ease;
 }
-.fade-enter, .fade-leave-to {
+
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
+}
+
+.fade-enter-to,
+.fade-leave-from {
+  opacity: 1;
 }
 </style>

@@ -2,37 +2,43 @@
   <div id="ConfigFileList" class="view-wrap">
     <div class="view-content">
       <div style="margin-bottom: 16px">
-        <a-input v-model:value="searchValue" size="middle" @keyup.enter="searchConfigFile()" :placeholder="$t('ConfigFileListView.searchKey')">
+        <a-input v-model:value="searchValue" size="middle" @keyup.enter="searchConfigFile" :placeholder="$t('ConfigFileListView.searchKey')">
           <template #addonBefore>
             <a-button size="middle" @click="createConfigFile">
               <template #icon>
-                <PlusOutlined />
+                <FluentIcon name="add" />
               </template>
             </a-button>
           </template>
           <template #addonAfter>
-            <a-button size="middle" type="primary" @click="searchConfigFile()">
+            <a-button size="middle" type="primary" @click="searchConfigFile">
               <template #icon>
-                <SearchOutlined />
+                <FluentIcon name="search" />
               </template>
             </a-button>
           </template>
         </a-input>
       </div>
+
       <div class="ConfigFileList">
-        <div class="configFileItem" v-for="(item,index) in configFileListShow" :key="item.id?.toString()"
-             :class="{configFileItemMouseOver: configItemMouseOverIndex === index,
-             configFileItemMouseLeave: configItemMouseOverIndex !== index,
-             configItemChoose: configChooseIndex === index}"
-             @mouseover="configItemMouseOver(index)"
-             @mouseleave="configItemMouseLeave"
-             @click="chooseConfigFile(index)"
+        <div
+          v-for="(item, index) in configFileListShow"
+          :key="item.id?.toString()"
+          class="configFileItem"
+          :class="{
+            configFileItemMouseOver: configItemMouseOverIndex === index,
+            configFileItemMouseLeave: configItemMouseOverIndex !== index,
+            configItemChoose: configChooseIndex === index,
+          }"
+          @mouseover="configItemMouseOver(index)"
+          @mouseleave="configItemMouseLeave"
+          @click="chooseConfigFile(index)"
         >
           <a-dropdown :trigger="['contextmenu']">
             <a-row class="select-disabled">
               <a-col :span="1">
                 <div class="configFilePicture">
-                  <FileTextOutlined class="fileIcon"/>
+                  <FluentIcon name="document" class="fileIcon" />
                 </div>
               </a-col>
               <a-col :span="19">
@@ -44,9 +50,7 @@
                   </a-row>
                 </div>
               </a-col>
-              <a-col :span="4">
-                2023-02-09 13:13:13
-              </a-col>
+              <a-col :span="4">2023-02-09 13:13:13</a-col>
             </a-row>
 
             <template #overlay v-if="operationMode === 'create'">
@@ -56,10 +60,10 @@
               </a-menu>
             </template>
           </a-dropdown>
-
-        </div> 
+        </div>
       </div>
     </div>
+
     <div class="footer-content">
       <a-button @click="back">{{ $t('ConfigFileListView.back') }}</a-button>
       <a-button @click="next" type="primary">{{ $t('ConfigFileListView.next') }}</a-button>
@@ -68,106 +72,73 @@
 </template>
 
 <script lang="ts" setup>
-import { i18n } from "@/i18n"
-import { message, Modal } from "ant-design-vue";
-import { useStore } from "vuex";
-import { getConfigFileList, removeConfigFileById } from "@/server/api/ConfigFileListApi";
-import { deepClone } from "@/utils/Util";
-import { Ref, ref } from "vue";
-import { useRouter } from "vue-router";
-import ConfigFile from "@/server/models/ServerConfigFile";
-import { FileTextOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons-vue';
+import { message } from 'ant-design-vue';
+import { ref, type Ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useStore } from 'vuex';
+import { i18n } from '@/i18n';
+import FluentIcon from '@/components/common/FluentIcon/index.vue';
+import ConfigFile from '@/server/models/ServerConfigFile';
+import { getConfigFileList, removeConfigFileById } from '@/server/api/ConfigFileListApi';
+import { deepClone } from '@/utils/Util';
+import { confirmNativeDialog, warningNativeDialog } from '@/utils/nativeDialog';
 
-// 鼠标悬浮item的下标
-let configItemMouseOverIndex: Ref<number | null> = ref(null);
-
-let configChooseIndex: Ref<number | null> = ref(null);
-let searchValue: Ref<string> = ref('');
-let configFileListShow: Ref<ConfigFile[]> = ref([]);
-let configFileList: Ref<ConfigFile[]> = ref([]);
+const configItemMouseOverIndex: Ref<number | null> = ref(null);
+const configChooseIndex: Ref<number | null> = ref(null);
+const searchValue: Ref<string> = ref('');
+const configFileListShow: Ref<ConfigFile[]> = ref([]);
+const configFileList: Ref<ConfigFile[]> = ref([]);
 const store = useStore();
 const router = useRouter();
 const operationMode = store.state.operationMode;
 
-
-/**
- * 初始化
- */
-function init() {
-  // 设置标题
+function init(): void {
   store.commit('updatePageTitle', i18n.global.t('ConfigFileListView.pageTitle'));
   getList();
 }
 
-init();
-
-/**
- * 获取配置文件列表
- */
 function getList(): void {
-  // 获取配置文件
   getConfigFileList().then((res: ConfigFile[]) => {
     configFileList.value = res;
-    // 按时间倒序排序
     configFileList.value.sort((a, b) => {
-      if(b.id && a.id) {
-        return b.id - a.id
-      } else {
-        return -1
+      if (b.id && a.id) {
+        return b.id - a.id;
       }
+      return -1;
     });
-    // 深拷贝
     configFileListShow.value = deepClone(configFileList.value);
-  })
+  });
 }
 
-
-/**
- * 搜索配置文件
- */
 function searchConfigFile(): void {
-  // 重置选择配置文件
   configChooseIndex.value = null;
-  if(searchValue.value !== null && searchValue.value !== '') {
-    let param = searchValue.value
-    configFileListShow.value = configFileList.value.filter(item => item.config_file_name?.toUpperCase().indexOf(param.toUpperCase()) !== -1)
+  if (searchValue.value) {
+    const param = searchValue.value.toUpperCase();
+    configFileListShow.value = configFileList.value.filter(item => item.config_file_name?.toUpperCase().includes(param));
   } else {
     configFileListShow.value = deepClone(configFileList.value);
   }
 }
 
-/**
- * 创建配置文件，跳转至创建页面
- */
 function createConfigFile(): void {
   store.commit('updateConfigFileEditViewMode', 'create');
-  router.push('/ConfigFileEdit')
+  router.push('/ConfigFileEdit');
 }
 
-/**
- * 选择配置文件
- */
 function chooseConfigFile(index: number): void {
-  configChooseIndex.value = configChooseIndex.value === index ? null : index
+  configChooseIndex.value = configChooseIndex.value === index ? null : index;
 }
 
-/**
- * 配置文件鼠标进入
- */
 function configItemMouseOver(index: number): void {
   configItemMouseOverIndex.value = index;
 }
 
-/**
- * 配置文件鼠标离开
- */
 function configItemMouseLeave(): void {
   configItemMouseOverIndex.value = null;
 }
 
-// 编辑配置文件
 function editConfigFile(id: number | null): void {
-  if(id === null) {
+  if (id === null) {
     throw new Error('required param id');
   }
   store.commit('updateConfigFileEditViewMode', 'edit');
@@ -175,68 +146,60 @@ function editConfigFile(id: number | null): void {
   router.push('/ConfigFileEdit');
 }
 
-/**
- * 删除配置文件
- */
-function deleteConfigFile(id: number | null) {
-  if(id === null) {
+async function deleteConfigFile(id: number | null): Promise<void> {
+  if (id === null) {
     throw new Error('required param id');
   }
-  Modal.confirm({
-    title: i18n.global.t('ConfigFileListView.deleteConfirm'),
-    icon: '',
-    okText: i18n.global.t('common.modal.confirm.yes'),
+
+  const confirmed = await confirmNativeDialog({
+    title: i18n.global.t('common.modal.confirm.title'),
+    message: i18n.global.t('ConfigFileListView.deleteConfirm'),
+    confirmText: i18n.global.t('common.modal.confirm.yes'),
     cancelText: i18n.global.t('common.modal.confirm.cancel'),
-    centered: true,
-    bodyStyle: {"text-align": "center"},
-    onOk() {
-      removeConfigFileById(id).then((res: boolean) => {
-        if(res) {
-          // 重新获取列表
-          getList();
-          // 重置选择下标
-          configChooseIndex.value = null
-          message.success(i18n.global.t('common.message.success.delete'))
-        } else {
-          message.error(i18n.global.t('common.message.failed.delete'))
-        }
-      })
-    },
-    onCancel() {
-    },
   });
+
+  if (!confirmed) {
+    return;
+  }
+
+  const res = await removeConfigFileById(id);
+  if (res) {
+    getList();
+    configChooseIndex.value = null;
+    message.success(i18n.global.t('common.message.success.delete'));
+  } else {
+    message.error(i18n.global.t('common.message.failed.delete'));
+  }
 }
 
-/**
- * 返回
- */
-function back() {
+function back(): void {
   router.push('/SelectType');
 }
 
-/**
- * 下一步
- */
-function next() {
-  if(configChooseIndex.value === null) {
-    Modal.warning({
-      title: i18n.global.t('ConfigFileListView.chooseConfigFileCheck'),
-      centered: true,
-      okText: i18n.global.t('common.modal.confirm.yes')
-    })
-  } else {
-    configFileListShow.value.forEach((item, index) => {
-      if(index === configChooseIndex.value) {
-        store.commit('updateSelectedConfigFile', item);
-      }
-    })
-    router.push('/ModChoose')
+async function next(): Promise<void> {
+  if (configChooseIndex.value === null) {
+    await warningNativeDialog({
+      title: i18n.global.t('common.modal.warning.title'),
+      message: i18n.global.t('ConfigFileListView.chooseConfigFileCheck'),
+      okText: i18n.global.t('common.modal.confirm.yes'),
+    });
+    return;
   }
+
+  configFileListShow.value.forEach((item, index) => {
+    if (index === configChooseIndex.value) {
+      store.commit('updateSelectedConfigFile', item);
+    }
+  });
+  router.push('/ModChoose');
 }
+
+init();
 </script>
 
 <style scoped lang="less">
 @import '@/styles/themes/dark.less';
+
 .view-content {
   position: absolute;
   width: 100%;
@@ -258,7 +221,7 @@ function next() {
   line-height: 50px;
   margin: 5px;
   border: 1px solid #111111;
-  box-shadow: 1px 1px 1px 1px rgba(0,0,0,0.5);
+  box-shadow: 1px 1px 1px 1px rgba(0, 0, 0, 0.5);
 }
 
 .configItemChoose {
@@ -271,39 +234,40 @@ function next() {
 
 .configFilePicture {
   text-align: center;
-  
+
   .fileIcon {
     font-size: 20px;
     line-height: 50px;
   }
 }
 
-
 .configFileItemMouseOver {
-  animation: configItemMouseOverAnim forwards .6s;
+  animation: configItemMouseOverAnim forwards 0.6s;
 }
 
 .configFileItemMouseLeave {
-  animation: configItemMouseLeaveAnim forwards .3s;
+  animation: configItemMouseLeaveAnim forwards 0.3s;
 }
 
 @keyframes configItemMouseOverAnim {
   from {
-    box-shadow: 1px 1px 1px 1px rgba(0,0,0,0.5);
+    box-shadow: 1px 1px 1px 1px rgba(0, 0, 0, 0.5);
   }
+
   to {
-    box-shadow: 5px 5px 5px 1px rgba(0,0,0,0.5);
+    box-shadow: 5px 5px 5px 1px rgba(0, 0, 0, 0.5);
     border-color: @primary-color;
   }
 }
 
 @keyframes configItemMouseLeaveAnim {
   from {
-    box-shadow: 5px 5px 5px 1px rgba(0,0,0,0.5);
+    box-shadow: 5px 5px 5px 1px rgba(0, 0, 0, 0.5);
     border-color: @primary-color;
   }
+
   to {
-    box-shadow: 1px 1px 1px 1px rgba(0,0,0,0.5);
+    box-shadow: 1px 1px 1px 1px rgba(0, 0, 0, 0.5);
   }
 }
 
@@ -312,5 +276,4 @@ function next() {
   border: none;
   background-color: transparent;
 }
-
 </style>

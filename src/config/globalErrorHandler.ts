@@ -1,11 +1,11 @@
 import { i18n } from "@/i18n";
-import { Modal } from "ant-design-vue";
 import { APIError, DataBaseError, UnknownError } from "@/server/constants/LogType";
 import ResData from "@/server/models/ResData";
 import { IPCMAIN_ERROR_PREFIX, STATUS_CODE } from "@/server/models/Constant";
 import { getUUID } from "@/utils/Util";
 import { now } from "@/utils/DateUtils";
 import { transToResData } from "@/utils/ResUtils";
+import { errorNativeDialog } from "@/utils/nativeDialog";
 
 const globalErrorHandler = (error: any) => {
     if(typeof error === 'string') {
@@ -66,19 +66,11 @@ const recordLog = (data: any, typeCode: string, typeText: string): Promise<ResDa
  */
 const showPopup = (error: ResData, title: string, type: string, typeText: string) => {
     console.log(error, title, type, typeText);
-    Modal.error({
-        centered: true,
-        title: () => title,
-        content: () => error.data,
-        okText: () => i18n.global.t('common.modal.error.ok'),
-        onOk: () => {
-            return new Promise((resolve) => {
-                recordLog(error.data, type , typeText).then((res) => {
-                    resolve(res);
-                })
-            })
-        },
-    })
+    errorNativeDialog({
+        title,
+        message: String(error.data ?? ''),
+        okText: i18n.global.t('common.modal.error.ok'),
+    }).then(() => recordLog(error.data, type , typeText));
 }
 
 export {
