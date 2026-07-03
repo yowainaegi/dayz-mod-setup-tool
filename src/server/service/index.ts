@@ -1,4 +1,4 @@
-import {ipcMain, ipcRenderer} from "electron";
+import {ipcMain} from "electron";
 import { osServiceHanleMethodMap } from "./OsService";
 import { transToResData } from "@/utils/ResUtils";
 import fs, {promises as pfs} from "fs";

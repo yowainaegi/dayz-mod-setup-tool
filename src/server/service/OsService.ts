@@ -205,7 +205,7 @@ const pathCleanValidate = (path: string): Promise<string> => {
 }
 
 const getStartUpFileContent = (): Promise<string>  => {
-    let START_UP_FILE_PATH = path.join(app.getAppPath(), './bundled/resource/startup.bat');
+    let START_UP_FILE_PATH = path.join(process.cwd(), 'public', 'resource', 'startup.bat');
      // 判断是否是正式环境
      if (app.isPackaged) {
         if(process.platform === 'darwin') {
@@ -237,7 +237,7 @@ const overwriteStartupFileContent = (content: string, targetFilePath: string) : 
         statusCode: null,
         data: null
     }
-    let START_UP_FILE_PATH = path.join(app.getAppPath(), './bundled/resource/startup.bat');
+    let START_UP_FILE_PATH = path.join(process.cwd(), 'public', 'resource', 'startup.bat');
     // 判断是否是正式环境
     if (app.isPackaged) {
        if(process.platform === 'darwin') {

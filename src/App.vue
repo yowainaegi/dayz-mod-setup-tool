@@ -17,6 +17,7 @@
 import { computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useStore } from "vuex";
+import TopNavBar from "@/components/global/TopNavBar/index.vue";
 
 const router  = useRouter();
 const store = useStore();

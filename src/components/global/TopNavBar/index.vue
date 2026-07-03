@@ -48,7 +48,6 @@ import { MinusOutlined, BorderOutlined, FileTextOutlined, SettingOutlined, Close
 import { i18n } from '@/i18n';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import {ipcRenderer} from "electron";
 import {useStore} from "vuex";
 
 // 路由
@@ -65,7 +64,7 @@ window.ipcRenderer.invoke("winInfo").then((winInfo: any) => {
 })
 
 // 监听窗体大小重置
-ipcRenderer.on("winInfo", (event, winInfo) => {
+window.ipcRenderer.receive("winInfo", (winInfo: any) => {
   isMaximized.value = winInfo.isMaximize;
   store.commit("updateWinInfo", winInfo);
 })

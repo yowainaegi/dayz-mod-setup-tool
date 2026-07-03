@@ -1,21 +1,11 @@
-"use strict";
-
-import {app, protocol, BrowserWindow, ipcMain, nativeImage} from "electron";
+import {app, BrowserWindow, ipcMain, nativeImage} from "electron";
 import path from "path";
-const isDevelopment = process.env.NODE_ENV !== "production";
-import electronDevToolsInstaller from "electron-devtools-installer";
-import { VUEJS_DEVTOOLS } from "electron-devtools-installer";
-
-// Scheme must be registered before the app is ready
-protocol.registerSchemesAsPrivileged([
-  { scheme: "app", privileges: { secure: true, standard: true } },
-]);
+const isDevelopment = !app.isPackaged;
 
 // nodejs服务端API
 import "@/server/service/index";
 // db操作API
 import "@/server/sqlite/index";
-import {createProtocol} from "vue-cli-plugin-electron-builder/lib";
 
 let win: BrowserWindow;
 let winDefaultPosition: number[];
@@ -31,31 +21,28 @@ async function createWindow() {
     minWidth: 1024,
     minHeight: 670,
     webPreferences: {
-      nodeIntegration: process.env.ELECTRON_NODE_INTEGRATION as unknown as boolean,
-      contextIsolation: !process.env.ELECTRON_NODE_INTEGRATION as unknown as boolean,
-      preload: path.join(__dirname, "preload.js")
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, "../preload/preload.js")
     },
   });
 
-  if (process.env.WEBPACK_DEV_SERVER_URL) {
+  if (process.env.ELECTRON_RENDERER_URL) {
     // Load the url of the dev server if in development mode
-    win.loadURL(process.env.WEBPACK_DEV_SERVER_URL as string);
+    win.loadURL(process.env.ELECTRON_RENDERER_URL);
     if (!process.env.IS_TEST) {
       win.webContents.openDevTools();
     }
   } else {
-    createProtocol("app");
     // Load the index.html when not in development
-    win.loadURL("app://./index.html");
+    win.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
 
   if(isDevelopment) {
-    const appIcon = nativeImage.createFromPath(path.join(__dirname, '/bundled/app-icons/icons/512x512.png'))
+    const appIcon = nativeImage.createFromPath(path.join(__dirname, '../../public/app-icons/icons/512x512.png'))
     win.setIcon(appIcon)
-    if(process.platform === 'darwin') {
+    if(process.platform === 'darwin' && app.dock) {
       app.dock.setIcon(appIcon)
-    } else {
-
     }
   }
 
