@@ -76,9 +76,11 @@ async function runServerSetupWorkflow(params: ServerSetupWorkflowParams): Promis
         onFileCountReset,
         onCountingChange
     } = params;
+    const finalModList = params.modList;
+    const removedModList = params.removedModList || [];
     const modList = mode === TASK_MODE.UPDATE
-        ? params.modList.filter(item => item.CanBeRemovedDZMSUTool)
-        : params.modList;
+        ? finalModList.filter(item => !item.IsAlreadyAddedToConfig)
+        : finalModList;
     const totalTasks = calculateTotalTasks(mode, modList.length);
     const progressManager = new ProgressManager(totalTasks, onProgressChange);
     const createdFolderPathMap: Map<string, string[]> = new Map();
@@ -115,6 +117,15 @@ async function runServerSetupWorkflow(params: ServerSetupWorkflowParams): Promis
 
     let taskNo = 1;
     const modCopyItems = buildModCopyItems(modList, configFile.server_folder_path, pathSep);
+
+    if (mode === TASK_MODE.UPDATE && removedModList.length > 0) {
+        await window.ipcRenderer.invoke(
+            'serverAPI',
+            'removeModsFromServerWorkspace',
+            configFile.server_folder_path,
+            removedModList.map((mod) => mod.modFolderName)
+        );
+    }
 
     if (mode === TASK_MODE.CREATE) {
         onStageTitleChange(stageTitles.copyPureServer);
@@ -184,7 +195,7 @@ async function runServerSetupWorkflow(params: ServerSetupWorkflowParams): Promis
         progressManager.updateProgress(`${taskNo++}`, 100);
 
         onStageTitleChange(stageTitles.editStartup);
-        await editStartBatFile(modList, configFile.deploy_server_folder_path, configFile.server_profile_folder, mode === TASK_MODE.UPDATE);
+        await editStartBatFile(finalModList, configFile.deploy_server_folder_path, configFile.server_profile_folder, mode === TASK_MODE.UPDATE);
         progressManager.updateProgress(`${taskNo++}`, 100);
     }
 

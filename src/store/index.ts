@@ -11,6 +11,7 @@ export default createStore({
     routerHistory: [],
     winInfo: null,
     modAddedList: [],
+    modRemovedList: [],
     operationMode: '',
     toolCreatedFolderPathMap: Map<string, string[]>,
     markedMapModId: '',
@@ -52,6 +53,9 @@ export default createStore({
     },
     updateModAddedList(state, modAddedList) {
       state.modAddedList = modAddedList;
+    },
+    updateModRemovedList(state, modRemovedList) {
+      state.modRemovedList = modRemovedList;
     },
     updateOperationMode(state, operationMode) {
       state.operationMode = operationMode;

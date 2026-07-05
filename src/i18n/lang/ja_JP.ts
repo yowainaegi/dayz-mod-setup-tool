@@ -82,11 +82,11 @@ export default {
             enterCreateTitle: '作成フローに入りますか？',
             enterCreateMessage: 'この設定はまだサーバー作成が完了していません。更新フローでは初期のクリーンサーバーコピーをスキップします。作成フローに切り替えて初期設定を完了しますか？',
             enterCreateConfirm: '作成へ',
-            missingWorkspaceMessage: 'サーバーフォルダーのパスまたはプリセットが空です。',
-            replacePresetTitle: '作業プリセットを置き換えますか？',
-            replacePresetCompletedMessage: 'サーバー作成後にプリセットを変更すると、デプロイ済み MOD と不整合になる可能性があります。続行してこの設定を workspace_ready に戻しますか？',
-            replacePresetMessage: 'プリセットを変更すると現在の作業プリセットが置き換えられ、このツールで行った MOD 変更は破棄されます。',
-            replacePresetConfirm: '置き換え',
+            missingWorkspaceMessage: 'サーバーフォルダーのパスが空です。',
+            replacePresetTitle: '新しいプリセットの差分を取り込みますか？',
+            replacePresetCompletedMessage: '新しいプリセットを読み込み、追加/削除される MOD を MOD 選択画面に表示します。削除された MOD のツール管理のマウントは清理しますが、手動設定は確認して修正する必要があります。続行しますか？',
+            replacePresetMessage: '新しいプリセットを読み込み、追加/削除される MOD として表示します。現在の作業プリセットは直接上書きしません。',
+            replacePresetConfirm: '差分を取り込む',
         }
     },
     ConfigFileEditView: {
@@ -146,7 +146,15 @@ export default {
         emptyText: 'モードが見つかりません',
         createConfirm: '今からサーバーを作成しますか?',
         updateConfirm: '今からサーバーを更新しますか？',
-        updateWarning: '既存サーバーにMODを追加してください'
+        updateWarning: '既存サーバーにMODを追加してください',
+        dependencyConfirmTitle: '依存 MOD が必要です',
+        dependencyConfirmMessage: '{modName} は以下の MOD に依存しています。一緒に追加しますか？\n{dependencies}',
+        dependencySelectionConfirmMessage: '現在追加済みの MOD に以下の依存関係が不足しています。一緒に追加しますか？\n{dependencies}',
+        dependencySelectionInvalid: '現在追加済みの MOD に以下の依存関係が不足していますが、現在の購読リストにありません:\n{dependencies}',
+        dependencyMissingUnavailable: '{modName} には以下の依存 MOD が必要ですが、現在の購読リストにありません:\n{dependencies}',
+        dependencyRemoveBlocked: '{modName} は削除できません。以下の追加済み MOD が依存しています:\n{dependents}',
+        removeExistingModConfirmTitle: 'デプロイ済み MOD を削除しますか？',
+        removeExistingModConfirmMessage: '更新時に {modName} を削除すると、サーバー内の MOD フォルダーを削除し、ツール管理の CE/mission 参照を清理します。関連する手動設定は確認して削除する必要があります。続行しますか？'
     },
     EditServerView: {
         next: '次へ',

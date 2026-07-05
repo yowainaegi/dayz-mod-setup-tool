@@ -79,7 +79,7 @@
               </template>
               <template #bodyCell="{record, column}">
                 <template v-if="column.key === 'action'">
-                  <a-button type="primary" size="small" @click="removeToSubscribedList($event, record)" :disabled="record.CanBeRemovedDZMSUTool === false">
+                  <a-button type="primary" size="small" @click="removeToSubscribedList($event, record)">
                     <FluentIcon name="arrow-left" />
                   </a-button>
                 </template>
@@ -131,7 +131,7 @@ import ServerConfigFile from "@/server/models/ServerConfigFile";
 import { deepClone } from "@/utils/Util";
 import { MOD_BE_SEARCHE_STATUS, MOD_LIST_TYPE } from "@/server/models/Constant";
 import FluentIcon from "@/components/common/FluentIcon/index.vue";
-import { confirmNativeDialog } from "@/utils/nativeDialog";
+import { confirmNativeDialog, warningNativeDialog } from "@/utils/nativeDialog";
 import FixedFooterActions from "@/components/common/FixedFooterActions/index.vue";
 // import { getModPreviewImage } from "@/utils/OsUtils";
 
@@ -191,7 +191,7 @@ let modAddedKey: Ref<string | null> = ref(null);
 store.commit('updatePageTitle', i18n.global.t('ModChooseView.pageTitle'));
 
 // 读取预设文件
-getModList().then((res: ModInfo[]) => {
+getModList().then(async (res: ModInfo[]) => {
   res.forEach(item => {
     modList_src.value.push(item)
   })
@@ -200,39 +200,68 @@ getModList().then((res: ModInfo[]) => {
 
   // 根据配置文件id读取配置文件中的预设文件中的所有已经加入的modId
   if (workingPresetFilePath) {
-    getModIdListByServerConfigFile(workingPresetFilePath).then((modAddedIdList: string[]) => {
-      modList_show.value.forEach(item => {
-        modAddedIdList.forEach(addedId => {
-          if(item.Id === addedId) {
-            item.AddedStatus = MOD_LIST_TYPE.ADDED;
-            if(operationMode === 'update') {
-              item.CanBeRemovedDZMSUTool = false;
-            } else {
-              item.CanBeRemovedDZMSUTool = true;
-            }
-          }
-        })
-      })
-    })
+    const modAddedIdList = await getModIdListByServerConfigFile(workingPresetFilePath);
+    applyPresetModIds(modAddedIdList, operationMode === 'update');
+  }
+
+  if (operationMode === 'update' && serverConfigFile.pending_preset_file_path) {
+    const nextPresetModIds = await getModIdListByServerConfigFile(serverConfigFile.pending_preset_file_path);
+    applyPendingPresetModIds(nextPresetModIds);
   }
 })
 
+function applyPresetModIds(modIdList: string[], isExistingConfig: boolean): void {
+  const modIdSet = new Set(modIdList.map((id) => normalizeModId(id)).filter((id): id is string => id !== null));
+  modList_show.value.forEach(item => {
+    const itemId = normalizeModId(item.Id);
+    if(itemId && modIdSet.has(itemId)) {
+      item.AddedStatus = MOD_LIST_TYPE.ADDED;
+      item.CanBeRemovedDZMSUTool = true;
+      item.IsAlreadyAddedToConfig = isExistingConfig;
+      updateSearchStatusForCurrentList(item);
+    }
+  })
+}
+
+function applyPendingPresetModIds(modIdList: string[]): void {
+  const modIdSet = new Set(modIdList.map((id) => normalizeModId(id)).filter((id): id is string => id !== null));
+  modList_show.value.forEach(item => {
+    const itemId = normalizeModId(item.Id);
+    if (!itemId) {
+      return;
+    }
+
+    item.AddedStatus = modIdSet.has(itemId) ? MOD_LIST_TYPE.ADDED : MOD_LIST_TYPE.SUBSCRIBED;
+    if (modIdSet.has(itemId) && !item.IsAlreadyAddedToConfig) {
+      item.CanBeRemovedDZMSUTool = true;
+    }
+    updateSearchStatusForCurrentList(item);
+  })
+}
+
 function searchModList(searchKey: string | null, modType: number) {
-  if(searchKey) {
-    modList_show.value.forEach((item: ModInfo) => {
-      if (item.DisplayName.toUpperCase().indexOf(searchKey.toUpperCase()) > -1 && item.AddedStatus === modType) {
-        item.SearchedStatus = MOD_BE_SEARCHE_STATUS.SEARCHED;
-      } else if(item.AddedStatus === modType){
-        item.SearchedStatus = MOD_BE_SEARCHE_STATUS.HIDDEN;
-      }
-    })
-  } else {
-    modList_show.value.forEach((item: ModInfo) => {
-      if(item.AddedStatus === modType){
-        item.SearchedStatus = MOD_BE_SEARCHE_STATUS.SEARCHED;
-      }
-    })
+  modList_show.value.forEach((item: ModInfo) => {
+    if(item.AddedStatus === modType){
+      updateSearchStatus(item, searchKey);
+    }
+  })
+}
+
+function getSearchKeyByModType(modType: number): string | null {
+  return modType === MOD_LIST_TYPE.ADDED ? modAddedKey.value : modSubscribedKey.value;
+}
+
+function updateSearchStatus(item: ModInfo, searchKey: string | null): void {
+  if (!searchKey || item.DisplayName.toUpperCase().indexOf(searchKey.toUpperCase()) > -1) {
+    item.SearchedStatus = MOD_BE_SEARCHE_STATUS.SEARCHED;
+    return;
   }
+
+  item.SearchedStatus = MOD_BE_SEARCHE_STATUS.HIDDEN;
+}
+
+function updateSearchStatusForCurrentList(item: ModInfo): void {
+  updateSearchStatus(item, getSearchKeyByModType(item.AddedStatus));
 }
 
 // 过滤订阅列表
@@ -246,7 +275,7 @@ const filteredModListAdded = computed(() => {
 })
 
 const hasUpdateModChanges = computed(() => {
-  return operationMode === 'update' && hasPendingModChanges(modList_show.value);
+  return operationMode === 'update' && (hasPendingModChanges(modList_show.value) || getRemovedMods().length > 0);
 })
 
 const primaryActionText = computed(() => {
@@ -262,24 +291,76 @@ const primaryActionText = computed(() => {
 /**
  * 将MOD加载到安装列表
  */
-function addToInstalledList(event: Event, record: ModInfo) {
+async function addToInstalledList(event: Event, record: ModInfo) {
   event.stopPropagation();
-  modList_show.value.forEach((item: ModInfo) => {
-    if(item.Id === record.Id) {
-      item.AddedStatus = MOD_LIST_TYPE.ADDED;
-      item.CanBeRemovedDZMSUTool = true;
+  const dependencyCheck = collectMissingDependencies(record);
+
+  if (dependencyCheck.unavailableIds.length > 0) {
+    await warningNativeDialog({
+      title: i18n.global.t('common.modal.warning.title'),
+      message: i18n.global.t('ModChooseView.dependencyMissingUnavailable', {
+        modName: record.DisplayName,
+        dependencies: dependencyCheck.unavailableIds.join(', '),
+      }),
+      okText: i18n.global.t('common.modal.confirm.yes'),
+    });
+    return;
+  }
+
+  if (dependencyCheck.availableMods.length > 0) {
+    const confirmed = await confirmNativeDialog({
+      title: i18n.global.t('ModChooseView.dependencyConfirmTitle'),
+      message: i18n.global.t('ModChooseView.dependencyConfirmMessage', {
+        modName: record.DisplayName,
+        dependencies: dependencyCheck.availableMods.map((mod) => mod.DisplayName).join(', '),
+      }),
+      confirmText: i18n.global.t('common.modal.confirm.yes'),
+      cancelText: i18n.global.t('common.modal.confirm.cancel'),
+    });
+    if (!confirmed) {
+      return;
     }
-  })
+  }
+
+  addModsToInstalledList([record, ...dependencyCheck.availableMods]);
 }
 
 /**
  * 将MOD从安装列表中移除
  */
-function removeToSubscribedList(event: Event, record: ModInfo) {
+async function removeToSubscribedList(event: Event, record: ModInfo) {
   event.stopPropagation();
+  const dependentMods = getSelectedDependentMods(record);
+  if (dependentMods.length > 0) {
+    await warningNativeDialog({
+      title: i18n.global.t('common.modal.warning.title'),
+      message: i18n.global.t('ModChooseView.dependencyRemoveBlocked', {
+        modName: record.DisplayName,
+        dependents: dependentMods.map((mod) => mod.DisplayName).join(', '),
+      }),
+      okText: i18n.global.t('common.modal.confirm.yes'),
+    });
+    return;
+  }
+
+  if (operationMode === 'update' && record.IsAlreadyAddedToConfig) {
+    const confirmed = await confirmNativeDialog({
+      title: i18n.global.t('ModChooseView.removeExistingModConfirmTitle'),
+      message: i18n.global.t('ModChooseView.removeExistingModConfirmMessage', {
+        modName: record.DisplayName,
+      }),
+      confirmText: i18n.global.t('common.modal.confirm.yes'),
+      cancelText: i18n.global.t('common.modal.confirm.cancel'),
+    });
+    if (!confirmed) {
+      return;
+    }
+  }
+
   modList_show.value.forEach((item: ModInfo) => {
     if(item.Id === record.Id) {
       item.AddedStatus = MOD_LIST_TYPE.SUBSCRIBED;
+      updateSearchStatusForCurrentList(item);
     }
   })
 }
@@ -299,8 +380,190 @@ function sortByDisplayName(list: ModInfo[]) {
 
 function hasPendingModChanges(modList: ModInfo[]): boolean {
   return modList.some((item: ModInfo) => {
-    return item.AddedStatus === MOD_LIST_TYPE.ADDED && item.CanBeRemovedDZMSUTool;
+    return item.AddedStatus === MOD_LIST_TYPE.ADDED && !item.IsAlreadyAddedToConfig;
   });
+}
+
+function normalizeModId(id: string | number | null | undefined): string | null {
+  if (id === null || id === undefined) {
+    return null;
+  }
+
+  const idText = String(id).trim();
+  if (!idText) {
+    return null;
+  }
+
+  return idText.startsWith('steam:') ? idText.substring('steam:'.length) : idText;
+}
+
+function getDependencyIds(mod: ModInfo): string[] {
+  return Array.from(new Set((mod.SteamDependencies || [])
+    .map((id) => normalizeModId(id))
+    .filter((id): id is string => id !== null)));
+}
+
+function getModByNormalizedIdMap(): Map<string, ModInfo> {
+  const modById = new Map<string, ModInfo>();
+  modList_show.value.forEach((mod) => {
+    const normalizedId = normalizeModId(mod.Id);
+    if (normalizedId) {
+      modById.set(normalizedId, mod);
+    }
+  });
+  return modById;
+}
+
+function collectMissingDependencies(targetMod: ModInfo): { availableMods: ModInfo[]; unavailableIds: string[] } {
+  const modById = getModByNormalizedIdMap();
+  const selectedIds = new Set(
+    modList_show.value
+      .filter((mod) => mod.AddedStatus === MOD_LIST_TYPE.ADDED)
+      .map((mod) => normalizeModId(mod.Id))
+      .filter((id): id is string => id !== null)
+  );
+  const targetId = normalizeModId(targetMod.Id);
+  if (targetId) {
+    selectedIds.add(targetId);
+  }
+
+  const availableMods: ModInfo[] = [];
+  const unavailableIds: string[] = [];
+  const visitedIds = new Set<string>();
+
+  function visit(mod: ModInfo): void {
+    getDependencyIds(mod).forEach((dependencyId) => {
+      if (visitedIds.has(dependencyId)) {
+        return;
+      }
+      visitedIds.add(dependencyId);
+
+      const dependencyMod = modById.get(dependencyId);
+      if (!dependencyMod) {
+        unavailableIds.push(dependencyId);
+        return;
+      }
+
+      if (!selectedIds.has(dependencyId)) {
+        selectedIds.add(dependencyId);
+        availableMods.push(dependencyMod);
+      }
+      visit(dependencyMod);
+    });
+  }
+
+  visit(targetMod);
+
+  return {
+    availableMods,
+    unavailableIds: Array.from(new Set(unavailableIds)),
+  };
+}
+
+function getDependencyClosureIds(mod: ModInfo, modById: Map<string, ModInfo>, visitedIds = new Set<string>()): Set<string> {
+  getDependencyIds(mod).forEach((dependencyId) => {
+    if (visitedIds.has(dependencyId)) {
+      return;
+    }
+    visitedIds.add(dependencyId);
+
+    const dependencyMod = modById.get(dependencyId);
+    if (dependencyMod) {
+      getDependencyClosureIds(dependencyMod, modById, visitedIds);
+    }
+  });
+
+  return visitedIds;
+}
+
+function getSelectedDependentMods(targetMod: ModInfo): ModInfo[] {
+  const targetId = normalizeModId(targetMod.Id);
+  if (!targetId) {
+    return [];
+  }
+
+  const modById = getModByNormalizedIdMap();
+  return modList_show.value.filter((mod) => {
+    return mod.Id !== targetMod.Id
+      && mod.AddedStatus === MOD_LIST_TYPE.ADDED
+      && getDependencyClosureIds(mod, modById).has(targetId);
+  });
+}
+
+function addModsToInstalledList(mods: ModInfo[]): void {
+  const idsToAdd = new Set(
+    mods
+      .map((mod) => normalizeModId(mod.Id))
+      .filter((id): id is string => id !== null)
+  );
+
+  modList_show.value.forEach((item: ModInfo) => {
+    const itemId = normalizeModId(item.Id);
+    if(itemId && idsToAdd.has(itemId)) {
+      item.AddedStatus = MOD_LIST_TYPE.ADDED;
+      item.CanBeRemovedDZMSUTool = true;
+      updateSearchStatusForCurrentList(item);
+    }
+  })
+}
+
+function getAddedMods(): ModInfo[] {
+  return modList_show.value.filter((item: ModInfo) => {
+    return item.AddedStatus === MOD_LIST_TYPE.ADDED;
+  });
+}
+
+function getRemovedMods(): ModInfo[] {
+  return modList_show.value.filter((item: ModInfo) => {
+    return item.AddedStatus === MOD_LIST_TYPE.SUBSCRIBED && item.IsAlreadyAddedToConfig;
+  });
+}
+
+async function ensureSelectedDependencies(): Promise<boolean> {
+  const modsToAddById = new Map<string, ModInfo>();
+  const unavailableIds = new Set<string>();
+
+  getAddedMods().forEach((mod) => {
+    const dependencyCheck = collectMissingDependencies(mod);
+    dependencyCheck.availableMods.forEach((dependencyMod) => {
+      const dependencyId = normalizeModId(dependencyMod.Id);
+      if (dependencyId) {
+        modsToAddById.set(dependencyId, dependencyMod);
+      }
+    });
+    dependencyCheck.unavailableIds.forEach((dependencyId) => unavailableIds.add(dependencyId));
+  });
+
+  if (unavailableIds.size > 0) {
+    await warningNativeDialog({
+      title: i18n.global.t('common.modal.warning.title'),
+      message: i18n.global.t('ModChooseView.dependencySelectionInvalid', {
+        dependencies: Array.from(unavailableIds).join(', '),
+      }),
+      okText: i18n.global.t('common.modal.confirm.yes'),
+    });
+    return false;
+  }
+
+  const modsToAdd = Array.from(modsToAddById.values());
+  if (modsToAdd.length === 0) {
+    return true;
+  }
+
+  const confirmed = await confirmNativeDialog({
+    title: i18n.global.t('ModChooseView.dependencyConfirmTitle'),
+    message: i18n.global.t('ModChooseView.dependencySelectionConfirmMessage', {
+      dependencies: modsToAdd.map((mod) => mod.DisplayName).join(', '),
+    }),
+    confirmText: i18n.global.t('common.modal.confirm.yes'),
+    cancelText: i18n.global.t('common.modal.confirm.cancel'),
+  });
+  if (!confirmed) {
+    return false;
+  }
+
+  addModsToInstalledList(modsToAdd);
+  return true;
 }
 
 // function getModPreviewImageSync(expanded: any, record: ModInfo): void {
@@ -332,12 +595,13 @@ function back() {
 }
 
 async function next() {
-  const  modAddedList = modList_show.value.filter((item: ModInfo) => {
-    return item.AddedStatus === MOD_LIST_TYPE.ADDED;
-  });
+  if (!await ensureSelectedDependencies()) {
+    return;
+  }
+
   const persistWorkingPreset = async () => {
     if (workingPresetFilePath) {
-      await saveModIdListToPresetFile(workingPresetFilePath, modAddedList.map((item) => item.Id));
+      await saveModIdListToPresetFile(workingPresetFilePath, getAddedMods().map((item) => item.Id));
     }
   };
   if(operationMode === 'create') {
@@ -349,14 +613,16 @@ async function next() {
     })
     if (confirmed) {
       await persistWorkingPreset();
-      store.commit('updateModAddedList', modAddedList);
+      store.commit('updateModAddedList', getAddedMods());
+      store.commit('updateModRemovedList', []);
       router.push('/EditServer');
     }
   } else {
 
-    if(!hasPendingModChanges(modList_show.value)) {
+    if(!hasUpdateModChanges.value) {
       await persistWorkingPreset();
-      store.commit('updateModAddedList', modAddedList);
+      store.commit('updateModAddedList', getAddedMods());
+      store.commit('updateModRemovedList', getRemovedMods());
       store.commit('updateToolCreatedFolderPathMap', new Map<string, string[]>());
       router.push('/ModMountConfig');
     } else {
@@ -368,7 +634,8 @@ async function next() {
       })
       if (confirmed) {
         await persistWorkingPreset();
-        store.commit('updateModAddedList', modAddedList);
+        store.commit('updateModAddedList', getAddedMods());
+        store.commit('updateModRemovedList', getRemovedMods());
         router.push('/EditServer');
       }
     }

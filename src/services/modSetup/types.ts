@@ -28,6 +28,7 @@ interface ServerSetupStageTitles {
 interface ServerSetupWorkflowParams extends WorkflowProgressCallbacks {
     configFile: ServerConfigFile;
     modList: ModInfo[];
+    removedModList?: ModInfo[];
     mode: TaskMode;
     stageTitles: ServerSetupStageTitles;
 }

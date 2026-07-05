@@ -44,6 +44,7 @@ const showFoot: Ref<boolean> = ref(false);
 const { receiveIpc } = useIpcListeners();
 
 const modAddedList: ModInfo[] = store.state.modAddedList;
+const modRemovedList: ModInfo[] = store.state.modRemovedList || [];
 const serverConfigFile: ServerConfigFile = store.state.selectedConfigFile;
 const operationMode: TaskMode = store.state.operationMode === 'create' ? TASK_MODE.CREATE : TASK_MODE.UPDATE;
 let toolCreatedFolderPathMap: Map<string, string[]> = new Map();
@@ -77,6 +78,7 @@ async function start() {
   const result = await runServerSetupWorkflow({
     configFile: serverConfigFile,
     modList: modAddedList,
+    removedModList: modRemovedList,
     mode: operationMode,
     stageTitles,
     receiveIpc,

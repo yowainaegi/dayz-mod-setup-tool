@@ -252,13 +252,31 @@ async function validateWorkflowEntry(configFile: ConfigFile): Promise<boolean> {
 }
 
 async function prepareWorkspaceForConfig(configFile: ConfigFile): Promise<ConfigFile | null> {
-  if (!configFile.id || !configFile.server_folder_path || !configFile.preset_file_name) {
+  if (!configFile.id || !configFile.server_folder_path) {
     await warningNativeDialog({
       title: i18n.global.t('common.modal.warning.title'),
       message: i18n.global.t('ConfigFileListView.workflowDialogs.missingWorkspaceMessage'),
       okText: i18n.global.t('common.modal.confirm.yes'),
     });
     return null;
+  }
+
+  if (!configFile.preset_file_name) {
+    const res: ResData = await window.ipcRenderer.invoke(
+      'serverAPI',
+      'createGeneratedServerConfigWorkspace',
+      configFile.server_folder_path
+    );
+    const nextConfig = {
+      ...configFile,
+      config_status: configFile.config_status && configFile.config_status !== 'draft'
+        ? configFile.config_status
+        : 'workspace_ready' as const,
+      source_preset_file_path: null,
+      active_preset_file_path: res.data.activePresetPath,
+    };
+    await updateConfigWorkspaceState(configFile.id, nextConfig.config_status, null, nextConfig.active_preset_file_path);
+    return nextConfig;
   }
 
   let res: ResData = await window.ipcRenderer.invoke(
@@ -285,13 +303,11 @@ async function prepareWorkspaceForConfig(configFile: ConfigFile): Promise<Config
       return null;
     }
 
-    res = await window.ipcRenderer.invoke(
+    await window.ipcRenderer.invoke(
       'serverAPI',
-      'prepareServerConfigWorkspace',
+      'markServerConfigWorkspacePresetSource',
       configFile.server_folder_path,
-      configFile.preset_file_name,
-      true,
-      configFile.source_preset_file_path
+      configFile.preset_file_name
     );
   }
 
@@ -303,6 +319,7 @@ async function prepareWorkspaceForConfig(configFile: ConfigFile): Promise<Config
     config_status: shouldResetToWorkspaceReady ? 'workspace_ready' as const : configFile.config_status,
     source_preset_file_path: configFile.preset_file_name,
     active_preset_file_path: res.data.activePresetPath,
+    pending_preset_file_path: res.data?.sourceChanged ? configFile.preset_file_name : null,
   };
   await updateConfigWorkspaceState(configFile.id, nextConfig.config_status, nextConfig.source_preset_file_path, nextConfig.active_preset_file_path);
   return nextConfig;

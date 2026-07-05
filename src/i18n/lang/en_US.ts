@@ -82,11 +82,11 @@ export default {
             enterCreateTitle: 'Enter create flow?',
             enterCreateMessage: 'This config has not completed server creation yet. Update would skip the initial pure server copy. Do you want to switch to Create and finish the initial setup first?',
             enterCreateConfirm: 'Enter Create',
-            missingWorkspaceMessage: 'Server folder path or preset is empty.',
-            replacePresetTitle: 'Replace working preset?',
-            replacePresetCompletedMessage: 'Changing preset after server creation may make deployed mods inconsistent. Continue and reset this config to workspace_ready?',
-            replacePresetMessage: 'Changing preset will replace the current working preset and discard mod changes made in this tool.',
-            replacePresetConfirm: 'Replace',
+            missingWorkspaceMessage: 'Server folder path is empty.',
+            replacePresetTitle: 'Import new preset changes?',
+            replacePresetCompletedMessage: 'The new preset will be read and its added/removed mods will be shown on the Mod Choose page. Removed mods will have tool-managed mounts cleaned up, but you still need to check manual configuration. Continue?',
+            replacePresetMessage: 'The new preset will be read and shown as added/removed mod changes. The current working preset will not be overwritten directly.',
+            replacePresetConfirm: 'Import changes',
         }
     },
     ConfigFileEditView: {
@@ -146,7 +146,15 @@ export default {
         emptyText: 'No Mod found',
         createConfirm: 'Are you sure to start create the server?',
         updateConfirm: 'Are you sure to start update the server?',
-        updateWarning: 'Please add MOD which you want'
+        updateWarning: 'Please add MOD which you want',
+        dependencyConfirmTitle: 'Dependency mods required',
+        dependencyConfirmMessage: '{modName} depends on these mods. Add them together?\n{dependencies}',
+        dependencySelectionConfirmMessage: 'The currently added mods are missing these dependencies. Add them together?\n{dependencies}',
+        dependencySelectionInvalid: 'The currently added mods are missing these dependencies, but they are not in the current subscribed list:\n{dependencies}',
+        dependencyMissingUnavailable: '{modName} requires these dependency mods, but they are not in the current subscribed list:\n{dependencies}',
+        dependencyRemoveBlocked: 'Cannot remove {modName}. These added mods depend on it:\n{dependents}',
+        removeExistingModConfirmTitle: 'Remove deployed mod?',
+        removeExistingModConfirmMessage: 'Removing {modName} during update will delete its server mod folder and clean tool-managed CE/mission references. You still need to check and remove related manual configuration. Continue?'
     },
     EditServerView: {
         next: 'Next',

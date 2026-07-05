@@ -12,5 +12,6 @@ export default interface ServerConfigFile {
     mod_mount_mode?: 'copy' | 'junction' | null,
     config_status?: 'draft' | 'workspace_ready' | 'server_created' | 'ce_mounted' | null,
     source_preset_file_path?: string | null,
-    active_preset_file_path?: string | null
+    active_preset_file_path?: string | null,
+    pending_preset_file_path?: string | null
 }

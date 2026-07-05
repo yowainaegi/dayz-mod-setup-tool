@@ -259,7 +259,7 @@
 
                 </div>
 
-                <div class="process-bar-area" v-if="isRunning || isComplete">
+                <div class="process-bar-area" v-if="isRunning">
                     <div>{{ processTitle }}</div>
                     <a-progress :percent="percent" :show-info="false" />
                     <div v-if="!isCounting && !isComplete">{{ processSrcPath }} -> {{ processTargetPath }}</div>
@@ -452,8 +452,7 @@ const mountItems = computed<ModCeMountItem[]>(() => {
 const enabledCount = computed(() => mountItems.value.length);
 const reviewCount = computed(() => candidates.value.filter((candidate) => candidate.confidence !== 'high').length);
 const allCandidatesHandled = computed(() => {
-    return candidates.value.length > 0
-        && candidates.value.every((candidate) => getProcessStatus(candidate) !== 'unprocessed');
+    return candidates.value.every((candidate) => getProcessStatus(candidate) !== 'unprocessed');
 });
 const selectedMission = computed<MissionSelection | undefined>(() => {
     return missionOptions.value.find((option) => option.key === selectedMissionKey.value)?.mission;
@@ -1279,12 +1278,14 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    max-width: 100%;
 }
 
 .view-content {
     flex: 1;
     min-height: 0;
     width: 100%;
+    box-sizing: border-box;
     padding: 8px;
     overflow: hidden;
 }
@@ -1294,6 +1295,8 @@ onBeforeUnmount(() => {
     flex-direction: column;
     gap: 8px;
     height: 100%;
+    min-width: 0;
+    overflow-x: hidden;
 }
 
 .summary-row {
@@ -1401,12 +1404,15 @@ onBeforeUnmount(() => {
     grid-template-columns: 220px minmax(420px, 1fr);
     gap: 8px;
     min-height: 0;
+    min-width: 0;
     flex: 1;
 }
 
 .mod-list,
 .candidate-list {
     min-height: 0;
+    min-width: 0;
+    box-sizing: border-box;
     border: 1px solid var(--app-color-border-secondary);
     border-radius: var(--app-border-radius);
     padding: 8px;
@@ -1473,6 +1479,7 @@ onBeforeUnmount(() => {
 }
 
 .table-wrap {
+    min-width: 0;
     overflow: auto;
     background: var(--app-color-bg-container);
 }

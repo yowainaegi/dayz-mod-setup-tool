@@ -28,7 +28,7 @@
         </a-form-item>
 
         <a-form-item :label="$t('ConfigFileEditView.form.fields.presetFileName')" name="preset_file_name">
-          <a-select v-model:value="configFileForm.preset_file_name" :options="presetFileNameList">
+          <a-select v-model:value="configFileForm.preset_file_name" :options="presetFileNameList" allow-clear>
             <template #suffixIcon>
               <FluentIcon v-if="presetFileNameListLoading" name="spinner" color="var(--app-color-text-heading)" spin />
               <FluentIcon v-else name="chevron-down" color="var(--app-color-text-heading)" />
@@ -145,9 +145,6 @@ const rules: Record<string, Rule[]> = {
   ],
   deploy_server_folder_path: [
     { required: true, type: 'string', message: i18n.global.t('ConfigFileEditView.form.validates.required.deployServerFolderPath'), trigger: 'blur' },
-  ],
-  preset_file_name: [
-    { required: true, type: 'string', message: i18n.global.t('ConfigFileEditView.form.validates.required.presetFileName'), trigger: 'change' },
   ],
   server_profile_folder: [
     { required: true, type: 'string', message: i18n.global.t('ConfigFileEditView.form.validates.required.serverProfileFolder'), trigger: 'blur' },
@@ -277,6 +274,7 @@ async function resetConfigStatus(): Promise<void> {
 
 async function save(): Promise<void> {
   syncDerivedFields();
+  configFileForm.value.preset_file_name = configFileForm.value.preset_file_name || null;
   configFileForm.value.source_preset_file_path = configFileForm.value.preset_file_name;
   configFileForm.value.config_status = configFileForm.value.config_status || 'draft';
 

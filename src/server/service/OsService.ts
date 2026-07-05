@@ -82,6 +82,7 @@ const MISSION_DECISIONS_FILE_NAME = '.mission-decisions.json';
 const PRESET_WORKSPACE_FOLDER_NAME = 'presets';
 const ACTIVE_PRESET_FILE_NAME = 'active.preset2';
 const PRESET_SOURCE_INFO_FILE_NAME = 'source-info.json';
+const GENERATED_PRESET_SOURCE_NAME = 'DayZ Mod Setup Tool';
 const CFG_ECONOMY_CORE_FILE_NAMES = new Set([
     'cfgeconomycore.xml',
     'cfgeconomycore.xml'.toLowerCase()
@@ -392,6 +393,19 @@ function writePresetSourceInfo(serverFolderPath: string, sourcePresetPath: strin
     return sourceInfo;
 }
 
+function buildPresetXml(modIds: string[] = []): string {
+    const uniqueIds = Array.from(new Set(modIds.map((id) => id.trim()).filter(Boolean)));
+    return [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<addons-presets>',
+        `  <last-update>${new Date().toISOString()}</last-update>`,
+        '  <published-ids>',
+        ...uniqueIds.map((id) => `    <id>${id.startsWith('steam:') ? id : `steam:${id}`}</id>`),
+        '  </published-ids>',
+        '</addons-presets>'
+    ].join('\n');
+}
+
 function readCeManualConfirmations(serverFolderPath: string, modFolderName: string): CeManualConfirmation[] {
     const manifestPath = getCeConfirmationManifestPath(serverFolderPath, modFolderName);
     if (!fs.existsSync(manifestPath)) {
@@ -509,6 +523,93 @@ function writeMissionDecisionState(serverFolderPath: string, state: MissionDecis
     fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
     fs.writeFileSync(manifestPath, JSON.stringify(nextState, null, 2), 'utf-8');
     return nextState;
+}
+
+function isPathInside(parentPath: string, childPath: string): boolean {
+    const resolvedParent = path.resolve(parentPath);
+    const resolvedChild = path.resolve(childPath);
+    return resolvedChild === resolvedParent || resolvedChild.startsWith(`${resolvedParent}${path.sep}`);
+}
+
+function removeDirectoryInside(serverFolderPath: string, targetPath: string): void {
+    if (!isPathInside(serverFolderPath, targetPath) || !fs.existsSync(targetPath)) {
+        return;
+    }
+
+    fs.rmSync(targetPath, { recursive: true, force: true });
+}
+
+function ceFolderBelongsToRemovedMod(folder: string, modFolderNames: Set<string>): boolean {
+    const normalizedFolder = folder.replace(/\\/g, '/');
+    for (const modFolderName of modFolderNames) {
+        if (
+            normalizedFolder === modFolderName
+            || normalizedFolder.startsWith(`${modFolderName}/`)
+            || normalizedFolder.startsWith(`${CREATED_CONFIG_FOLDER_NAME}/${modFolderName}/`)
+        ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function removeRemovedModCeRefsFromContent(content: string, modFolderNames: Set<string>): string {
+    return content
+        .replace(/<ce\b[^>]*\bfolder="([^"]+)"[^>]*>[\s\S]*?<\/ce>/gi, (match, folder) => {
+            return ceFolderBelongsToRemovedMod(folder, modFolderNames) ? '' : match;
+        })
+        .replace(/<ce\b[^>]*\bfolder="([^"]+)"[^>]*\/>/gi, (match, folder) => {
+            return ceFolderBelongsToRemovedMod(folder, modFolderNames) ? '' : match;
+        });
+}
+
+function cleanupMissionReferencesForRemovedMods(serverFolderPath: string, modFolderNames: string[]): void {
+    const removedModNames = new Set(modFolderNames);
+    const mpmissionsPath = path.join(serverFolderPath, 'mpmissions');
+    if (!fs.existsSync(mpmissionsPath)) {
+        return;
+    }
+
+    const missionEntries = fs.readdirSync(mpmissionsPath, { withFileTypes: true });
+    for (const missionEntry of missionEntries) {
+        if (!missionEntry.isDirectory()) {
+            continue;
+        }
+
+        const missionPath = path.join(mpmissionsPath, missionEntry.name);
+        for (const modFolderName of modFolderNames) {
+            removeDirectoryInside(serverFolderPath, path.join(missionPath, CREATED_CONFIG_FOLDER_NAME, modFolderName));
+            removeDirectoryInside(serverFolderPath, path.join(missionPath, modFolderName));
+        }
+
+        const economyCorePath = path.join(missionPath, 'cfgeconomycore.xml');
+        if (fs.existsSync(economyCorePath)) {
+            const content = fs.readFileSync(economyCorePath, 'utf-8');
+            const nextContent = removeRemovedModCeRefsFromContent(content, removedModNames);
+            if (nextContent !== content) {
+                fs.writeFileSync(economyCorePath, nextContent, 'utf-8');
+            }
+        }
+    }
+}
+
+function cleanupRemovedModState(serverFolderPath: string, modFolderNames: string[]): void {
+    const removedModNames = new Set(modFolderNames);
+    writeMissionImports(
+        serverFolderPath,
+        readMissionImports(serverFolderPath).filter((record) => !removedModNames.has(record.modFolderName))
+    );
+
+    const missionDecisionState = readMissionDecisionState(serverFolderPath);
+    if (missionDecisionState.selectedMission && removedModNames.has(missionDecisionState.selectedMission.modFolderName)) {
+        delete missionDecisionState.selectedMission;
+    }
+    writeMissionDecisionState(serverFolderPath, {
+        ...missionDecisionState,
+        ignoredTerrainModNames: missionDecisionState.ignoredTerrainModNames.filter((name) => !removedModNames.has(name)),
+        processedTerrainModNames: missionDecisionState.processedTerrainModNames.filter((name) => !removedModNames.has(name))
+    });
 }
 
 function buildCeIgnoredCandidateMap(serverFolderPath: string, modFolderName: string): Map<string, CeIgnoredCandidate> {
@@ -1163,6 +1264,113 @@ const prepareServerConfigWorkspace = (
                 action,
                 activePresetPath,
                 sourceInfo: nextSourceInfo
+            };
+            resolve(JSON.stringify(resData));
+        } catch (error: any) {
+            resData.statusCode = STATUS_CODE.API_ERROR;
+            resData.data = error.message;
+            reject(jsonStringfyToIPCMAINError(resData));
+        }
+    });
+}
+
+const createGeneratedServerConfigWorkspace = (serverFolderPath: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const resData: ResData = {
+            statusCode: null,
+            data: null
+        };
+
+        try {
+            if (!serverFolderPath) {
+                throw new Error('serverFolderPath is empty');
+            }
+
+            const presetWorkspaceFolderPath = getPresetWorkspaceFolderPath(serverFolderPath);
+            const activePresetPath = getActivePresetPath(serverFolderPath);
+            fs.mkdirSync(presetWorkspaceFolderPath, { recursive: true });
+
+            let action: 'created' | 'reused' = 'reused';
+            if (!fs.existsSync(activePresetPath)) {
+                fs.writeFileSync(activePresetPath, buildPresetXml(), 'utf-8');
+                action = 'created';
+            }
+
+            const nextSourceInfo = writePresetSourceInfo(serverFolderPath, GENERATED_PRESET_SOURCE_NAME, activePresetPath);
+            resData.statusCode = STATUS_CODE.SUCCESS;
+            resData.data = {
+                requiresConfirmation: false,
+                sourceChanged: false,
+                action,
+                activePresetPath,
+                sourceInfo: nextSourceInfo
+            };
+            resolve(JSON.stringify(resData));
+        } catch (error: any) {
+            resData.statusCode = STATUS_CODE.API_ERROR;
+            resData.data = error.message;
+            reject(jsonStringfyToIPCMAINError(resData));
+        }
+    });
+}
+
+const removeModsFromServerWorkspace = (serverFolderPath: string, modFolderNames: string[]): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const resData: ResData = {
+            statusCode: null,
+            data: null
+        };
+
+        try {
+            if (!serverFolderPath) {
+                throw new Error('serverFolderPath is empty');
+            }
+
+            const removedModFolderNames = Array.from(new Set((modFolderNames || []).filter(Boolean)));
+            for (const modFolderName of removedModFolderNames) {
+                removeDirectoryInside(serverFolderPath, path.join(serverFolderPath, modFolderName));
+            }
+            cleanupMissionReferencesForRemovedMods(serverFolderPath, removedModFolderNames);
+            cleanupRemovedModState(serverFolderPath, removedModFolderNames);
+
+            resData.statusCode = STATUS_CODE.SUCCESS;
+            resData.data = {
+                removedModFolderNames
+            };
+            resolve(JSON.stringify(resData));
+        } catch (error: any) {
+            resData.statusCode = STATUS_CODE.API_ERROR;
+            resData.data = error.message;
+            reject(jsonStringfyToIPCMAINError(resData));
+        }
+    });
+}
+
+const markServerConfigWorkspacePresetSource = (serverFolderPath: string, sourcePresetPath: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const resData: ResData = {
+            statusCode: null,
+            data: null
+        };
+
+        try {
+            if (!serverFolderPath) {
+                throw new Error('serverFolderPath is empty');
+            }
+            if (!sourcePresetPath || !fs.existsSync(sourcePresetPath)) {
+                throw new Error(`source preset does not exist: ${sourcePresetPath}`);
+            }
+
+            const activePresetPath = getActivePresetPath(serverFolderPath);
+            if (!fs.existsSync(activePresetPath)) {
+                throw new Error(`active preset does not exist: ${activePresetPath}`);
+            }
+
+            const sourceInfo = writePresetSourceInfo(serverFolderPath, sourcePresetPath, activePresetPath);
+            resData.statusCode = STATUS_CODE.SUCCESS;
+            resData.data = {
+                activePresetPath,
+                sourceInfo
             };
             resolve(JSON.stringify(resData));
         } catch (error: any) {
@@ -1856,6 +2064,9 @@ osServiceHanleMethodMap.set("discoverMapMissionCandidates", discoverMapMissionCa
 osServiceHanleMethodMap.set("detectTerrainResourceMods", detectTerrainResourceMods);
 osServiceHanleMethodMap.set("validateMissionFolder", validateMissionFolder);
 osServiceHanleMethodMap.set("prepareServerConfigWorkspace", prepareServerConfigWorkspace);
+osServiceHanleMethodMap.set("createGeneratedServerConfigWorkspace", createGeneratedServerConfigWorkspace);
+osServiceHanleMethodMap.set("removeModsFromServerWorkspace", removeModsFromServerWorkspace);
+osServiceHanleMethodMap.set("markServerConfigWorkspacePresetSource", markServerConfigWorkspacePresetSource);
 osServiceHanleMethodMap.set("importMissionTemplate", importMissionTemplate);
 osServiceHanleMethodMap.set("getMissionDecisionState", getMissionDecisionState);
 osServiceHanleMethodMap.set("saveSelectedMissionCandidate", saveSelectedMissionCandidate);

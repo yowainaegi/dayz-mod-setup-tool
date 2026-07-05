@@ -1,6 +1,15 @@
 import ResData from "@/server/models/ResData";
 import ModInfo from "@/server/models/ModInfo";
 
+function rewriteStartupModList(content: string, modList: ModInfo[]): string {
+    const modContent = modList.map((mod) => mod.modFolderName).join(';');
+    if (/"-mod=[^"]*"/.test(content)) {
+        return content.replace(/"-mod=[^"]*"/, `"-mod=${modContent}"`);
+    }
+
+    return content.replace(/DayZServer_x64\.exe/i, `DayZServer_x64.exe "-mod=${modContent}"`);
+}
+
 
 
 // 创建服务器profile文件夹
@@ -49,6 +58,8 @@ export async function editStartBatFile(modList: ModInfo[], serverFolderPath: str
                 suffix = content.substring(content.indexOf('\necho (%time%) %wat% closed or crashed, restarting.'));
         
                 content = profileContent + suffix;
+
+                content = rewriteStartupModList(content, modList);
 
                 window.ipcRenderer.invoke(
                     'serverAPI', 

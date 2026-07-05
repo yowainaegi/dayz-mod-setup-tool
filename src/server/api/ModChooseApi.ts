@@ -22,6 +22,7 @@ export function getModList(): Promise<ModInfo[]> {
                     modInfoList[i].AddedStatus = MOD_LIST_TYPE.SUBSCRIBED;
                     modInfoList[i].SearchedStatus = MOD_BE_SEARCHE_STATUS.SEARCHED;
                     modInfoList[i].CanBeRemovedDZMSUTool = true;
+                    modInfoList[i].IsAlreadyAddedToConfig = false;
                     let cachedPreviewImageObj = modInfoList[i].StorageInfo.CachedPreviewImage;
                     if(cachedPreviewImageObj) {
                         const pictureContentResData = await window.ipcRenderer.invoke('serverAPI', 'getPictureContent', cachedPreviewImageObj.FullPath);
@@ -68,7 +69,7 @@ export function getModIdListByServerConfigFile(presetFilePath: string): Promise<
 }
 
 export function saveModIdListToPresetFile(presetFilePath: string, modIdList: string[]): Promise<void> {
-    const normalizedIds = Array.from(new Set(modIdList.map((id) => id.startsWith('steam:') ? id.substring('steam:'.length) : id)));
+    const normalizedIds = Array.from(new Set(modIdList.map((id) => id.startsWith('steam:') ? id : `steam:${id}`)));
     const publishedIdsXml = [
         '  <published-ids>',
         ...normalizedIds.map((id) => `    <id>${id}</id>`),
@@ -83,6 +84,11 @@ export function saveModIdListToPresetFile(presetFilePath: string, modIdList: str
                 nextContent = fileContent.replace(/<published-ids>[\s\S]*?<\/published-ids>/i, publishedIdsXml);
             } else {
                 nextContent = fileContent.replace(/<\/addons-presets>/i, `${publishedIdsXml}\n</addons-presets>`);
+            }
+            if (/<last-update>[\s\S]*?<\/last-update>/i.test(nextContent)) {
+                nextContent = nextContent.replace(/<last-update>[\s\S]*?<\/last-update>/i, `<last-update>${new Date().toISOString()}</last-update>`);
+            } else {
+                nextContent = nextContent.replace(/<addons-presets>/i, `<addons-presets>\n  <last-update>${new Date().toISOString()}</last-update>`);
             }
 
             window.ipcRenderer.invoke('serverAPI', 'overwriteFileContent', nextContent, presetFilePath)
