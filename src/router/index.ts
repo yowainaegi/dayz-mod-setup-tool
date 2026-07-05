@@ -1,5 +1,15 @@
 import {createRouter, createWebHashHistory, RouteRecordRaw} from "vue-router";
 import {useStore} from "vuex";
+import IndexView from "@/views/IndexView.vue";
+import SelectTypeView from "@/views/SelectTypeView.vue";
+import ConfigFileListView from "@/views/ConfigFileListView.vue";
+import ConfigFileEditView from "@/views/ConfigFileEditView.vue";
+import ModChooseView from "@/views/ModChooseView.vue";
+import EditServerView from "@/views/EditServerView.vue";
+import ModMountConfigView from "@/views/ModMountConfigView.vue";
+import LogListView from "@/views/LogListView.vue";
+import SettingsView from "@/views/SettingsView.vue";
+import InitializationView from "@/views/InitializationView.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -10,67 +20,79 @@ const routes: Array<RouteRecordRaw> = [
         path: '/Index',
         name: 'IndexView',
         meta: {index: 0},
-        component: () => import('@/views/IndexView.vue')
+        component: IndexView
     },
     {
         path: '/SelectType',
         name: 'SelectTypeView',
         meta: {index: 1},
-        component: () => import('@/views/SelectTypeView.vue')
+        component: SelectTypeView
     },
     {
         path: '/ConfigFileList',
         name: 'ConfigFileListView',
         meta: {index: 2},
-        component: () => import('@/views/ConfigFileListView.vue')
+        component: ConfigFileListView
     },
     {
         path: '/ConfigFileEdit',
         name: 'ConfigFileEditView',
         meta: {index: 3},
-        component: () => import('@/views/ConfigFileEditView.vue')
+        component: ConfigFileEditView
     },
     {
         path: '/ModChoose',
         name: 'ModChooseView',
         meta: {index: 4},
-        component: () => import('@/views/ModChooseView.vue')
+        component: ModChooseView
     },
     {
         path: '/EditServer',
         name: 'EditServerView',
         meta: {index: 5},
-        component: () => import('@/views/EditServerView.vue')
+        component: EditServerView
     },
     {
         path: '/ModMountConfig',
         name: 'ModMountConfigView',
         meta: {index: 6},
-        component: () => import('@/views/ModMountConfigView.vue')
+        component: ModMountConfigView
     },
     {
         path: '/LogList',
         name: 'LogListView',
         meta: {index: 98},
-        component: () => import('@/views/LogListView.vue')
+        component: LogListView
     },
     {
         path: '/Settings',
         name: 'SettingsView',
         meta: {index: 99},
-        component: () => import('@/views/SettingsView.vue')
+        component: SettingsView
     },
     {
         path: '/Initialization',
         name: 'InitializationView',
         meta: {index: 100},
-        component: () => import('@/views/InitializationView.vue')
+        component: InitializationView
     },
     {
         path: '/Dialog',
         name: 'DialogView',
         meta: {index: -1, dialog: true},
         component: () => import('@/views/DialogView.vue')
+    },
+    {
+        path: '/TextFilePreview',
+        name: 'TextFilePreviewView',
+        meta: {index: -1, dialog: true},
+        component: () => import('@/views/TextFilePreviewView.vue')
+    },
+    {
+        path: '/TextFileEditor',
+        name: 'TextFileEditorView',
+        meta: {index: -1, dialog: true},
+        component: () => import('@/views/TextFileEditorView.vue')
     },
 ];
 

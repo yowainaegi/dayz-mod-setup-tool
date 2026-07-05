@@ -31,5 +31,33 @@ window.addEventListener('unhandledrejection', (event) => {
     globalErrorHandler(event.reason);
 })
 
+const browserHistoryMouseButtons = new Set([3, 4]);
+const browserHistoryKeys = new Set(['BrowserBack', 'BrowserForward']);
+const browserHistoryAltArrowKeys = new Set(['ArrowLeft', 'ArrowRight', 'Left', 'Right']);
+
+function preventBrowserHistoryNavigation(event: Event) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+}
+
+function preventBrowserHistoryMouseNavigation(event: MouseEvent) {
+    if (browserHistoryMouseButtons.has(event.button)) {
+        preventBrowserHistoryNavigation(event);
+    }
+}
+
+function preventBrowserHistoryKeyboardNavigation(event: KeyboardEvent) {
+    if (browserHistoryKeys.has(event.key) || (event.altKey && browserHistoryAltArrowKeys.has(event.key))) {
+        preventBrowserHistoryNavigation(event);
+    }
+}
+
+const browserHistoryMouseEventOptions: AddEventListenerOptions = { capture: true, passive: false };
+window.addEventListener('mousedown', preventBrowserHistoryMouseNavigation, browserHistoryMouseEventOptions);
+window.addEventListener('mouseup', preventBrowserHistoryMouseNavigation, browserHistoryMouseEventOptions);
+window.addEventListener('click', preventBrowserHistoryMouseNavigation, browserHistoryMouseEventOptions);
+window.addEventListener('auxclick', preventBrowserHistoryMouseNavigation, browserHistoryMouseEventOptions);
+window.addEventListener('keydown', preventBrowserHistoryKeyboardNavigation, { capture: true });
 
 app.mount("#app");

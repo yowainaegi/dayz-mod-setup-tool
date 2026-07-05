@@ -15,6 +15,11 @@ interface CopySource {
     targetPath: string;
 }
 
+interface FileCopySource {
+    srcPath: string;
+    targetPath: string;
+}
+
 interface FolderScanResult {
     files: string[];
     folders: string[];
@@ -143,6 +148,33 @@ async function copyFoldersWithProgress(
     }
 }
 
+async function copyFilesWithProgress(
+    event: IpcMainInvokeEvent,
+    taskId: string,
+    sources: FileCopySource[]
+): Promise<void> {
+    let totalSize = 0;
+    let copiedSize = 0;
+
+    for (const source of sources) {
+        const fileStat = await pfs.stat(source.srcPath);
+        totalSize += fileStat.size;
+    }
+
+    if (sources.length === 0) {
+        event.sender.send(`${taskId}_generateProgress`, 100, '', '');
+        return;
+    }
+
+    for (const source of sources) {
+        await copyFileWithProgress(source.srcPath, source.targetPath, (bytesCopied) => {
+            copiedSize += bytesCopied;
+            const progress = totalSize === 0 ? 100 : (copiedSize / totalSize) * 100;
+            event.sender.send(`${taskId}_generateProgress`, progress, path.basename(source.srcPath), source.targetPath);
+        });
+    }
+}
+
 function createSuccessResData(): ResData {
     return {
         statusCode: STATUS_CODE.SUCCESS,
@@ -209,6 +241,16 @@ ipcMain.handle('copyFoldersWithProgress', async (event, taskId: string, sources:
     event.sender.send('resetCountFile');
     try {
         await copyFoldersWithProgress(event, taskId, sources);
+        return createSuccessResData();
+    } catch (error) {
+        return rejectWithProcessError(event, error);
+    }
+});
+
+ipcMain.handle('copyFilesWithProgress', async (event, taskId: string, sources: FileCopySource[]) => {
+    event.sender.send('resetCountFile');
+    try {
+        await copyFilesWithProgress(event, taskId, sources);
         return createSuccessResData();
     } catch (error) {
         return rejectWithProcessError(event, error);

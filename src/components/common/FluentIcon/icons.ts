@@ -9,6 +9,8 @@ import chevronRight from '@fluentui/svg-icons/icons/chevron_right_24_regular.svg
 import dismiss from '@fluentui/svg-icons/icons/dismiss_24_regular.svg?raw';
 import dismissCircle from '@fluentui/svg-icons/icons/dismiss_circle_24_regular.svg?raw';
 import document from '@fluentui/svg-icons/icons/document_24_regular.svg?raw';
+import edit from '@fluentui/svg-icons/icons/edit_24_regular.svg?raw';
+import folderOpen from '@fluentui/svg-icons/icons/folder_open_24_regular.svg?raw';
 import lineHorizontal from '@fluentui/svg-icons/icons/line_horizontal_1_24_regular.svg?raw';
 import info from '@fluentui/svg-icons/icons/info_24_regular.svg?raw';
 import question from '@fluentui/svg-icons/icons/question_24_regular.svg?raw';
@@ -32,6 +34,8 @@ export const fluentIcons = {
   dismiss,
   'dismiss-circle': dismissCircle,
   document,
+  edit,
+  'folder-open': folderOpen,
   info,
   'line-horizontal': lineHorizontal,
   question,

@@ -9,15 +9,10 @@ import { errorNativeDialog } from "@/utils/nativeDialog";
 
 const globalErrorHandler = (error: any) => {
     if(typeof error === 'string') {
-        processAPIError(error);
+        processErrorMessage(error);
     } else {
         try {
-            if(error.message.indexOf(IPCMAIN_ERROR_PREFIX) !== -1) {
-                const errMsg = error.message.substring(error.message.indexOf('IPCMAINERROR_') + 'IPCMAINERROR_'.length);
-                processAPIError(errMsg);
-            } else {
-                throw new Error(error)
-            }
+            processErrorMessage(error.message);
         } catch (err: any) {
             let resErr: ResData = {
                 statusCode: null,
@@ -28,6 +23,20 @@ const globalErrorHandler = (error: any) => {
             showPopup(resErr, i18n.global.t('common.modal.error.title.UnknownError'), UnknownError, i18n.global.t('common.appLogType.Error.UnknownError'));
         }
     }
+}
+
+function processErrorMessage(errorMessage: string) {
+    if(errorMessage.indexOf(IPCMAIN_ERROR_PREFIX) !== -1) {
+        const errMsg = errorMessage.substring(errorMessage.indexOf(IPCMAIN_ERROR_PREFIX) + IPCMAIN_ERROR_PREFIX.length);
+        processAPIError(errMsg);
+        return;
+    }
+
+    const resErr: ResData = {
+        statusCode: STATUS_CODE.UNKNOWN_ERROR,
+        data: errorMessage
+    };
+    showPopup(resErr, i18n.global.t('common.modal.error.title.UnknownError'), UnknownError, i18n.global.t('common.appLogType.Error.UnknownError'));
 }
 
 

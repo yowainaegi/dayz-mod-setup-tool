@@ -1,23 +1,26 @@
 <template>
   <div id="ConfigFileList" class="view-wrap">
-    <div class="view-content">
-      <div style="margin-bottom: 16px">
-        <a-input v-model:value="searchValue" size="middle" @keyup.enter="searchConfigFile" :placeholder="$t('ConfigFileListView.searchKey')">
-          <template #addonBefore>
-            <a-button size="middle" @click="createConfigFile">
-              <template #icon>
-                <FluentIcon name="add" />
-              </template>
-            </a-button>
-          </template>
-          <template #addonAfter>
-            <a-button size="middle" type="primary" @click="searchConfigFile">
-              <template #icon>
-                <FluentIcon name="search" />
-              </template>
-            </a-button>
-          </template>
-        </a-input>
+    <div class="view-content config-file-list-content">
+      <div class="config-file-toolbar">
+        <div class="config-file-search">
+          <a-input v-model:value="searchValue" size="middle" @keyup.enter="searchConfigFile" :placeholder="$t('ConfigFileListView.searchKey')">
+            <template #addonBefore>
+              <a-button size="middle" @click="createConfigFile">
+                <template #icon>
+                  <FluentIcon name="add" />
+                </template>
+              </a-button>
+            </template>
+            <template #addonAfter>
+              <a-button size="middle" type="primary" @click="searchConfigFile">
+                <template #icon>
+                  <FluentIcon name="search" />
+                </template>
+              </a-button>
+            </template>
+          </a-input>
+        </div>
+        <a-button @click="mountXmlConfig">XML Mount</a-button>
       </div>
 
       <div class="ConfigFileList">
@@ -41,7 +44,7 @@
                   <FluentIcon name="document" class="fileIcon" />
                 </div>
               </a-col>
-              <a-col :span="19">
+              <a-col :span="16">
                 <div class="configFIleInfo">
                   <a-row>
                     <a-col :span="8">{{ item.server_id }}</a-col>
@@ -49,6 +52,11 @@
                     <a-col :span="8">{{ item.server_name }}</a-col>
                   </a-row>
                 </div>
+              </a-col>
+              <a-col :span="3">
+                <span :class="['config-status', getConfigStatus(item)]">
+                  {{ getConfigStatusLabel(item) }}
+                </span>
               </a-col>
               <a-col :span="4">2023-02-09 13:13:13</a-col>
             </a-row>
@@ -64,10 +72,10 @@
       </div>
     </div>
 
-    <div class="footer-content">
+    <FixedFooterActions>
       <a-button @click="back">{{ $t('ConfigFileListView.back') }}</a-button>
       <a-button @click="next" type="primary">{{ $t('ConfigFileListView.next') }}</a-button>
-    </div>
+    </FixedFooterActions>
   </div>
 </template>
 
@@ -80,8 +88,11 @@ import { i18n } from '@/i18n';
 import FluentIcon from '@/components/common/FluentIcon/index.vue';
 import ConfigFile from '@/server/models/ServerConfigFile';
 import { getConfigFileList, removeConfigFileById } from '@/server/api/ConfigFileListApi';
+import { updateConfigWorkspaceState } from '@/server/api/ConfigFileEditApi';
 import { deepClone } from '@/utils/Util';
 import { confirmNativeDialog, warningNativeDialog } from '@/utils/nativeDialog';
+import ResData from '@/server/models/ResData';
+import FixedFooterActions from '@/components/common/FixedFooterActions/index.vue';
 
 const configItemMouseOverIndex: Ref<number | null> = ref(null);
 const configChooseIndex: Ref<number | null> = ref(null);
@@ -91,6 +102,7 @@ const configFileList: Ref<ConfigFile[]> = ref([]);
 const store = useStore();
 const router = useRouter();
 const operationMode = store.state.operationMode;
+type ConfigStatus = NonNullable<ConfigFile['config_status']>;
 
 function init(): void {
   store.commit('updatePageTitle', i18n.global.t('ConfigFileListView.pageTitle'));
@@ -146,6 +158,14 @@ function editConfigFile(id: number | null): void {
   router.push('/ConfigFileEdit');
 }
 
+function getConfigStatus(configFile: ConfigFile): ConfigStatus {
+  return configFile.config_status || 'draft';
+}
+
+function getConfigStatusLabel(configFile: ConfigFile): string {
+  return i18n.global.t(`common.configStatus.${getConfigStatus(configFile)}`);
+}
+
 async function deleteConfigFile(id: number | null): Promise<void> {
   if (id === null) {
     throw new Error('required param id');
@@ -177,39 +197,181 @@ function back(): void {
 }
 
 async function next(): Promise<void> {
+  const selectedConfigFile = await getSelectedConfigFile();
+  if (!selectedConfigFile) {
+    return;
+  }
+
+  if (!await validateWorkflowEntry(selectedConfigFile)) {
+    return;
+  }
+
+  const workspaceReadyConfig = await prepareWorkspaceForConfig(selectedConfigFile);
+  if (!workspaceReadyConfig) {
+    return;
+  }
+
+  store.commit('updateSelectedConfigFile', workspaceReadyConfig);
+  router.push('/ModChoose');
+}
+
+function hasCompletedServerWorkflow(configFile: ConfigFile): boolean {
+  return configFile.config_status === 'server_created' || configFile.config_status === 'ce_mounted';
+}
+
+async function validateWorkflowEntry(configFile: ConfigFile): Promise<boolean> {
+  const currentOperationMode = store.state.operationMode;
+
+  if (currentOperationMode === 'create' && hasCompletedServerWorkflow(configFile)) {
+    const confirmed = await confirmNativeDialog({
+      title: i18n.global.t('ConfigFileListView.workflowDialogs.enterUpdateTitle'),
+      message: i18n.global.t('ConfigFileListView.workflowDialogs.enterUpdateMessage'),
+      confirmText: i18n.global.t('ConfigFileListView.workflowDialogs.enterUpdateConfirm'),
+      cancelText: i18n.global.t('common.modal.confirm.cancel'),
+    });
+    if (confirmed) {
+      store.commit('updateOperationMode', 'update');
+    }
+    return confirmed;
+  }
+
+  if (currentOperationMode === 'update' && !hasCompletedServerWorkflow(configFile)) {
+    const confirmed = await confirmNativeDialog({
+      title: i18n.global.t('ConfigFileListView.workflowDialogs.enterCreateTitle'),
+      message: i18n.global.t('ConfigFileListView.workflowDialogs.enterCreateMessage'),
+      confirmText: i18n.global.t('ConfigFileListView.workflowDialogs.enterCreateConfirm'),
+      cancelText: i18n.global.t('common.modal.confirm.cancel'),
+    });
+    if (confirmed) {
+      store.commit('updateOperationMode', 'create');
+    }
+    return confirmed;
+  }
+
+  return true;
+}
+
+async function prepareWorkspaceForConfig(configFile: ConfigFile): Promise<ConfigFile | null> {
+  if (!configFile.id || !configFile.server_folder_path || !configFile.preset_file_name) {
+    await warningNativeDialog({
+      title: i18n.global.t('common.modal.warning.title'),
+      message: i18n.global.t('ConfigFileListView.workflowDialogs.missingWorkspaceMessage'),
+      okText: i18n.global.t('common.modal.confirm.yes'),
+    });
+    return null;
+  }
+
+  let res: ResData = await window.ipcRenderer.invoke(
+    'serverAPI',
+    'prepareServerConfigWorkspace',
+    configFile.server_folder_path,
+    configFile.preset_file_name,
+    false,
+    configFile.source_preset_file_path
+  );
+
+  if (res.data?.requiresConfirmation) {
+    const strongWarning = configFile.config_status === 'server_created' || configFile.config_status === 'ce_mounted';
+    const confirmed = await confirmNativeDialog({
+      title: i18n.global.t('ConfigFileListView.workflowDialogs.replacePresetTitle'),
+      message: strongWarning
+        ? i18n.global.t('ConfigFileListView.workflowDialogs.replacePresetCompletedMessage')
+        : i18n.global.t('ConfigFileListView.workflowDialogs.replacePresetMessage'),
+      confirmText: i18n.global.t('ConfigFileListView.workflowDialogs.replacePresetConfirm'),
+      cancelText: i18n.global.t('common.modal.confirm.cancel'),
+    });
+
+    if (!confirmed) {
+      return null;
+    }
+
+    res = await window.ipcRenderer.invoke(
+      'serverAPI',
+      'prepareServerConfigWorkspace',
+      configFile.server_folder_path,
+      configFile.preset_file_name,
+      true,
+      configFile.source_preset_file_path
+    );
+  }
+
+  const shouldResetToWorkspaceReady = !configFile.config_status
+    || configFile.config_status === 'draft'
+    || res.data?.sourceChanged;
+  const nextConfig = {
+    ...configFile,
+    config_status: shouldResetToWorkspaceReady ? 'workspace_ready' as const : configFile.config_status,
+    source_preset_file_path: configFile.preset_file_name,
+    active_preset_file_path: res.data.activePresetPath,
+  };
+  await updateConfigWorkspaceState(configFile.id, nextConfig.config_status, nextConfig.source_preset_file_path, nextConfig.active_preset_file_path);
+  return nextConfig;
+}
+
+async function mountXmlConfig(): Promise<void> {
+  const selectedConfigFile = await getSelectedConfigFile();
+  if (!selectedConfigFile) {
+    return;
+  }
+
+  store.commit('updateSelectedConfigFile', selectedConfigFile);
+  store.commit('updateToolCreatedFolderPathMap', new Map<string, string[]>());
+  router.push('/ModMountConfig');
+}
+
+async function getSelectedConfigFile(): Promise<ConfigFile | null> {
   if (configChooseIndex.value === null) {
     await warningNativeDialog({
       title: i18n.global.t('common.modal.warning.title'),
       message: i18n.global.t('ConfigFileListView.chooseConfigFileCheck'),
       okText: i18n.global.t('common.modal.confirm.yes'),
     });
-    return;
+    return null;
   }
 
-  configFileListShow.value.forEach((item, index) => {
-    if (index === configChooseIndex.value) {
-      store.commit('updateSelectedConfigFile', item);
-    }
-  });
-  router.push('/ModChoose');
+  return configFileListShow.value[configChooseIndex.value] || null;
 }
 
 init();
 </script>
 
 <style scoped lang="less">
-@import '@/styles/themes/dark.less';
-
-.view-content {
-  position: absolute;
-  width: 100%;
+#ConfigFileList {
+  position: relative;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.config-file-list-content {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  padding: 6px 10px 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.config-file-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.config-file-search {
+  flex: 1;
+  min-width: 0;
 }
 
 .ConfigFileList {
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  height: 78%;
-  overflow-y: overlay;
+  overflow-y: auto;
 }
 
 .configFileItem:hover {
@@ -217,27 +379,59 @@ init();
 }
 
 .configFileItem {
-  height: 50px;
-  line-height: 50px;
-  margin: 5px;
-  border: 1px solid #111111;
-  box-shadow: 1px 1px 1px 1px rgba(0, 0, 0, 0.5);
+  height: 42px;
+  line-height: 42px;
+  margin: 4px 0;
+  border: 1px solid var(--app-color-bg-container);
+  box-shadow: var(--app-shadow-elevated);
 }
 
 .configItemChoose {
-  background-color: @primary-color;
+  background-color: var(--app-color-primary);
 }
 
 .configFIleInfo {
   width: 100%;
 }
 
+.config-status {
+  display: inline-flex;
+  max-width: calc(100% - 8px);
+  height: 20px;
+  align-items: center;
+  padding: 0 6px;
+  overflow: hidden;
+  border: 1px solid var(--app-color-border-secondary);
+  background: var(--app-color-hover-bg);
+  color: var(--app-color-text);
+  font-size: 11px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.config-status.workspace_ready {
+  border-color: var(--app-color-link);
+  color: var(--app-color-link);
+}
+
+.config-status.server_created {
+  border-color: var(--app-color-success);
+  color: var(--app-color-success);
+}
+
+.config-status.ce_mounted {
+  border-color: var(--app-color-primary);
+  color: var(--app-color-primary);
+}
+
 .configFilePicture {
   text-align: center;
 
   .fileIcon {
-    font-size: 20px;
-    line-height: 50px;
+    font-size: 18px;
+    line-height: 42px;
   }
 }
 
@@ -251,23 +445,23 @@ init();
 
 @keyframes configItemMouseOverAnim {
   from {
-    box-shadow: 1px 1px 1px 1px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--app-shadow-elevated);
   }
 
   to {
-    box-shadow: 5px 5px 5px 1px rgba(0, 0, 0, 0.5);
-    border-color: @primary-color;
+    box-shadow: var(--app-shadow-elevated-strong);
+    border-color: var(--app-color-primary);
   }
 }
 
 @keyframes configItemMouseLeaveAnim {
   from {
-    box-shadow: 5px 5px 5px 1px rgba(0, 0, 0, 0.5);
-    border-color: @primary-color;
+    box-shadow: var(--app-shadow-elevated-strong);
+    border-color: var(--app-color-primary);
   }
 
   to {
-    box-shadow: 1px 1px 1px 1px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--app-shadow-elevated);
   }
 }
 

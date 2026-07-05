@@ -3,9 +3,10 @@ import ResData from "@/server/models/ResData";
 import { getPathSep } from "@/utils/OsUtils";
 import ProgressManager from "@/utils/ProgressManager";
 import { CREATED_CONFIG_FOLDER_NAME } from "./constants";
-import { appendConfigFoldersToEconomyCore } from "./economyCoreService";
+import { appendConfigFoldersToEconomyCore, appendMountItemsToEconomyCore } from "./economyCoreService";
 import {
     CreatedModConfig,
+    ModCeMountItem,
     ModMountWorkflowParams,
     NormalConfigFolder
 } from "./types";
@@ -60,6 +61,18 @@ function buildNormalConfigFolders(createdModConfigs: CreatedModConfig[]): Normal
     });
 }
 
+function buildMountTargetPath(serverFolderPath: string, missionFolderName: string, mountItem: ModCeMountItem, pathSep: string): string {
+    return [
+        serverFolderPath,
+        'mpmissions',
+        missionFolderName,
+        CREATED_CONFIG_FOLDER_NAME,
+        mountItem.modFolderName,
+        mountItem.selectedType,
+        mountItem.fileName
+    ].join(pathSep);
+}
+
 async function runModMountWorkflow(params: ModMountWorkflowParams): Promise<void> {
     const {
         configFile,
@@ -70,7 +83,8 @@ async function runModMountWorkflow(params: ModMountWorkflowParams): Promise<void
         onStageTitleChange,
         onCopyingFileChange,
         onFileCountIncrement,
-        onCountingChange
+        onCountingChange,
+        mountItems
     } = params;
     const pathSep = await getPathSep();
     if (!configFile.server_folder_path) {
@@ -80,20 +94,24 @@ async function runModMountWorkflow(params: ModMountWorkflowParams): Promise<void
     let missionFolderName = 'dayzOffline.chernarusplus';
     let currentMissionPath = `${configFile.server_folder_path}${pathSep}mpmissions${pathSep}${missionFolderName}`;
     const createdModConfigs = buildCreatedModConfigs(createdFolderPathMap, configFile.server_folder_path, pathSep);
-    const mapMissionFolders = createdModConfigs.flatMap((config) => {
-        return config.configFolders.filter((folder) => folder.isMapMissions);
-    });
     const normalConfigFolders = buildNormalConfigFolders(createdModConfigs);
+    const effectiveMountItems = (mountItems || []).filter((mountItem) => mountItem.mountKind === 'economycore');
+    const useMountItems = effectiveMountItems.length > 0;
+    const missionSelection = params.missionSelection;
 
-    let totalTasks = normalConfigFolders.length + 1;
-    if (mapMissionFolders.length > 1) {
-        throw Error("Has more than 1 map mod want to create");
-    } else if (mapMissionFolders.length === 1) {
-        totalTasks += 2;
+    let totalTasks = useMountItems ? effectiveMountItems.length : normalConfigFolders.length;
+    totalTasks += 1;
+    if (missionSelection?.missionFolderName) {
+        missionFolderName = missionSelection.missionFolderName;
+        currentMissionPath = `${configFile.server_folder_path}${pathSep}mpmissions${pathSep}${missionFolderName}`;
     } else if (configFile.server_map_mission_path) {
         const validateRes: ResData = await window.ipcRenderer.invoke('serverAPI', 'pathMissionsFolderValidate', configFile.server_map_mission_path);
         missionFolderName = validateRes.data;
         currentMissionPath = `${configFile.server_folder_path}${pathSep}mpmissions${pathSep}${missionFolderName}`;
+    }
+
+    if (missionSelection?.sourcePath) {
+        totalTasks += 2;
     }
 
     const progressManager = new ProgressManager(totalTasks, onProgressChange);
@@ -110,52 +128,70 @@ async function runModMountWorkflow(params: ModMountWorkflowParams): Promise<void
     }
 
     let taskNo = 1;
-    if (mapMissionFolders.length === 1) {
-        const mapMissionPath = mapMissionFolders[0].path;
-
+    if (missionSelection?.sourcePath) {
         onStageTitleChange(stageTitles.copyMissions);
         onCountingChange(true);
-        await window.ipcRenderer.invoke('countFiles', mapMissionPath);
-
-        const validateRes: ResData = await window.ipcRenderer.invoke('serverAPI', 'pathMissionsFolderValidate', mapMissionPath);
-        missionFolderName = validateRes.data;
+        await window.ipcRenderer.invoke('countFiles', missionSelection.sourcePath);
 
         onCountingChange(false);
         await window.ipcRenderer.invoke(
             'copyFolderWithProgress',
             `${taskNo++}`,
-            `${mapMissionPath}${pathSep}${missionFolderName}`,
+            missionSelection.sourcePath,
             `${configFile.server_folder_path}${pathSep}mpmissions${pathSep}${missionFolderName}`
         );
 
         currentMissionPath = `${configFile.server_folder_path}${pathSep}mpmissions${pathSep}${missionFolderName}`;
         await editServerDZCfg(missionFolderName, `${configFile.server_folder_path}${pathSep}serverDZ.cfg`, configFile.server_folder_path);
         progressManager.updateProgress(`${taskNo++}`, 100);
+    } else if (missionSelection?.missionFolderName) {
+        await editServerDZCfg(missionFolderName, `${configFile.server_folder_path}${pathSep}serverDZ.cfg`, configFile.server_folder_path);
     }
 
     onStageTitleChange(stageTitles.copyModConfigXml);
-    for (const configFolder of normalConfigFolders) {
-        onCountingChange(true);
-        await window.ipcRenderer.invoke('countFiles', configFolder.path);
-
-        onCountingChange(false);
-        const resData: ResData = await window.ipcRenderer.invoke('serverAPI', 'pathCleanValidate', configFolder.path);
-        if (!resData.data) {
+    if (useMountItems) {
+        for (const mountItem of effectiveMountItems) {
+            onCountingChange(false);
             await window.ipcRenderer.invoke(
-                'copyFolderWithProgress',
+                'copyFilesWithProgress',
                 `${taskNo++}`,
-                configFolder.path,
-                `${configFile.server_folder_path}${pathSep}mpmissions${pathSep}${missionFolderName}${pathSep}${configFolder.modFolderName}${pathSep}${configFolder.type}`
+                [{
+                    srcPath: mountItem.sourcePath,
+                    targetPath: buildMountTargetPath(configFile.server_folder_path, missionFolderName, mountItem, pathSep)
+                }]
             );
-        } else {
-            progressManager.updateProgress(`${taskNo++}`, 100);
+        }
+    } else {
+        for (const configFolder of normalConfigFolders) {
+            onCountingChange(true);
+            await window.ipcRenderer.invoke('countFiles', configFolder.path);
+
+            onCountingChange(false);
+            const resData: ResData = await window.ipcRenderer.invoke('serverAPI', 'pathCleanValidate', configFolder.path);
+            if (!resData.data) {
+                await window.ipcRenderer.invoke(
+                    'copyFolderWithProgress',
+                    `${taskNo++}`,
+                    configFolder.path,
+                    `${configFile.server_folder_path}${pathSep}mpmissions${pathSep}${missionFolderName}${pathSep}${configFolder.modFolderName}${pathSep}${configFolder.type}`
+                );
+            } else {
+                progressManager.updateProgress(`${taskNo++}`, 100);
+            }
         }
     }
 
-    const cfgeconomycoreXmlContent = await getCfgeconomycoreXmlContent(`${currentMissionPath}${pathSep}cfgeconomycore.xml`);
-    await appendConfigFoldersToEconomyCore(cfgeconomycoreXmlContent, normalConfigFolders);
-    await writeObjectToXML(cfgeconomycoreXmlContent, `${currentMissionPath}${pathSep}cfgeconomycore.xml`);
-    progressManager.updateProgress(`${taskNo++}`, 100);
+    if (useMountItems) {
+        const cfgeconomycoreXmlContent = await getCfgeconomycoreXmlContent(`${currentMissionPath}${pathSep}cfgeconomycore.xml`);
+        appendMountItemsToEconomyCore(cfgeconomycoreXmlContent, effectiveMountItems);
+        await writeObjectToXML(cfgeconomycoreXmlContent, `${currentMissionPath}${pathSep}cfgeconomycore.xml`);
+        progressManager.updateProgress(`${taskNo++}`, 100);
+    } else {
+        const cfgeconomycoreXmlContent = await getCfgeconomycoreXmlContent(`${currentMissionPath}${pathSep}cfgeconomycore.xml`);
+        await appendConfigFoldersToEconomyCore(cfgeconomycoreXmlContent, normalConfigFolders);
+        await writeObjectToXML(cfgeconomycoreXmlContent, `${currentMissionPath}${pathSep}cfgeconomycore.xml`);
+        progressManager.updateProgress(`${taskNo++}`, 100);
+    }
 
     onStageTitleChange(stageTitles.completed);
 }

@@ -3,13 +3,16 @@
     <div class="view-content">
       <div>{{ processTitle }}</div>
       <a-progress :percent="percent" :show-info="false" />
-      <div v-if="!isCounting && !isComplete">{{ $t('EditServerView.copyingContent', { percent, src: processSrcPath, dest: processTargetPath }) }} </div>
-      <div v-if="isCounting && !isComplete">{{ $t('EditServerView.fileFound', { processFileCount } ) }}</div>
+      <div v-if="!isCounting && !isComplete && showCopyingDetail && processSrcPath && processTargetPath">{{ $t('EditServerView.copyingContent', {
+        percent, src: processSrcPath,
+        dest: processTargetPath }) }} </div>
+      <div v-if="!isCounting && !isComplete && !showCopyingDetail">Copying pure DayZ server files... {{ percent.toFixed(1) }}%</div>
+      <div v-if="isCounting && !isComplete">{{ $t('EditServerView.fileFound', { processFileCount }) }}</div>
     </div>
-    <div class="footer-content" v-if="showFoot">
+    <FixedFooterActions v-if="showFoot">
       <a-button @click="back">{{ $t('EditServerView.back') }}</a-button>
       <a-button @click="next" type="primary">{{ $t('EditServerView.next') }}</a-button>
-    </div>
+    </FixedFooterActions>
   </div>
 </template>
 
@@ -17,7 +20,7 @@
 import { useRouter } from "vue-router";
 import { useStore } from "vuex";
 import { i18n } from "@/i18n";
-import { ref, Ref } from "vue";
+import { computed, ref, Ref } from "vue";
 import ModInfo from "@/server/models/ModInfo";
 import ServerConfigFile from "@/server/models/ServerConfigFile";
 import { globalErrorHandler } from "@/config/globalErrorHandler";
@@ -25,6 +28,8 @@ import useIpcListeners from "@/utils/useIpcListeners";
 import { TASK_MODE } from "@/services/modSetup/constants";
 import { runServerSetupWorkflow } from "@/services/modSetup/serverSetupWorkflow";
 import { ServerSetupStageTitles, TaskMode } from "@/services/modSetup/types";
+import { updateConfigStatus } from "@/server/api/ConfigFileEditApi";
+import FixedFooterActions from "@/components/common/FixedFooterActions/index.vue";
 
 const router = useRouter();
 const store = useStore();
@@ -58,6 +63,10 @@ const stageTitles: ServerSetupStageTitles = {
   editServerCfg: i18n.global.t('EditServerView.stagesTitle.edit_server_dz_cfg_file'),
   completed: i18n.global.t('EditServerView.stagesTitle.completed')
 };
+
+const showCopyingDetail = computed(() => {
+  return processTitle.value !== stageTitles.copyPureServer;
+});
 
 async function start() {
   receiveIpc('os-service-process-error', (errMsg: string) => {
@@ -93,6 +102,10 @@ async function start() {
   });
 
   toolCreatedFolderPathMap = result.createdFolderPathMap;
+  if (serverConfigFile.id) {
+    await updateConfigStatus(serverConfigFile.id, 'server_created');
+    serverConfigFile.config_status = 'server_created';
+  }
   isComplete.value = true;
 }
 
@@ -111,11 +124,28 @@ function next() {
 </script>
 
 <style scoped lang="less">
+#EditServer {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .view-content {
+  flex: 1;
+  min-height: 0;
   width: 75%;
-  position: absolute;
-  top: 35%;
-  left: 50%;
-  transform: translateX(-50%);
+  max-width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+:deep(.ant-progress) {
+  max-width: 100%;
 }
 </style>

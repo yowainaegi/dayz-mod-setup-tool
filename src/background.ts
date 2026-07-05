@@ -1,6 +1,9 @@
-import {app, BrowserWindow, ipcMain, nativeImage} from "electron";
+import {app, BrowserWindow, dialog, ipcMain, nativeImage, shell} from "electron";
+import fs from "fs";
 import path from "path";
+import { appThemeTokens } from "@/styles/antdTheme";
 const isDevelopment = !app.isPackaged;
+const TEXT_FILE_PREVIEW_MAX_BYTES = 2 * 1024 * 1024;
 
 interface AppDialogOptions {
   type?: 'none' | 'info' | 'error' | 'question' | 'warning';
@@ -16,6 +19,24 @@ interface AppDialogResult {
   response: number;
 }
 
+interface TextFilePreviewData {
+  title: string;
+  filePath: string;
+  content: string;
+  isTruncated: boolean;
+  serverFolderPath?: string;
+  modFolderName?: string;
+  selectedType?: string;
+  saveSourcePath?: string;
+  error?: string;
+}
+
+interface TextFileEditorData extends TextFilePreviewData {
+  serverFolderPath: string;
+  modFolderName: string;
+  selectedType?: string;
+}
+
 // nodejs服务端API
 import "@/server/service/index";
 // db操作API
@@ -24,25 +45,71 @@ import "@/server/sqlite/index";
 let win: BrowserWindow;
 let winDefaultPosition: number[];
 const dialogOptionsByWebContentsId = new Map<number, Required<AppDialogOptions>>();
+const textFilePreviewByWebContentsId = new Map<number, TextFilePreviewData>();
+const textFileEditorByWebContentsId = new Map<number, TextFileEditorData>();
+
+const mainWindowSize = {
+  width: 1180,
+  height: 720,
+  minWidth: 1040,
+  minHeight: 640,
+} as const;
+
+const dialogWindowSize = {
+  width: 360,
+  height: 176,
+} as const;
+
+const textFilePreviewWindowSize = {
+  width: 760,
+  height: 540,
+  minWidth: 560,
+  minHeight: 380,
+} as const;
+
+const textFileEditorWindowSize = {
+  width: 820,
+  height: 600,
+  minWidth: 640,
+  minHeight: 460,
+} as const;
+
+function disableBrowserHistoryNavigation(browserWindow: BrowserWindow) {
+  browserWindow.on('app-command', (event, command) => {
+    if (command === 'browser-backward' || command === 'browser-forward') {
+      event.preventDefault();
+    }
+  });
+
+  browserWindow.webContents.on('before-input-event', (event, input) => {
+    const isBrowserHistoryKey = input.key === 'BrowserBack' || input.key === 'BrowserForward';
+    const isAltArrowHistory = input.alt && ['ArrowLeft', 'ArrowRight', 'Left', 'Right'].includes(input.key);
+
+    if (isBrowserHistoryKey || isAltArrowHistory) {
+      event.preventDefault();
+    }
+  });
+}
 
 async function createWindow() {
   // Create the browser window.
   win = new BrowserWindow({
-    width: 1024,
-    height: 670,
+    width: mainWindowSize.width,
+    height: mainWindowSize.height,
     resizable: true,
     show: false,
     frame: false,
     hasShadow: true,
     thickFrame: true,
-    minWidth: 1024,
-    minHeight: 670,
+    minWidth: mainWindowSize.minWidth,
+    minHeight: mainWindowSize.minHeight,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, "../preload/preload.js")
     },
   });
+  disableBrowserHistoryNavigation(win);
 
   if (process.env.ELECTRON_RENDERER_URL) {
     // Load the url of the dev server if in development mode
@@ -143,7 +210,7 @@ ipcMain.on('unmaximize', (_event, _message) => {
 // 重置窗体大小
 ipcMain.on('resize', (_event, _message) => {
   win.unmaximize();
-  win.setSize(1024, 670);
+  win.setSize(mainWindowSize.width, mainWindowSize.height);
   win.setPosition(winDefaultPosition[0], winDefaultPosition[1]);
 })
 
@@ -172,8 +239,8 @@ ipcMain.handle('showNativeDialog', async (_event, options: AppDialogOptions): Pr
 
   return new Promise<AppDialogResult>((resolve) => {
     const parentWindow = win && !win.isDestroyed() ? win : undefined;
-    const dialogWidth = 388;
-    const dialogHeight = 192;
+    const dialogWidth = dialogWindowSize.width;
+    const dialogHeight = dialogWindowSize.height;
     const parentBounds = parentWindow?.getBounds();
     const dialogPosition = parentBounds
       ? {
@@ -196,7 +263,7 @@ ipcMain.handle('showNativeDialog', async (_event, options: AppDialogOptions): Pr
       minimizable: false,
       maximizable: false,
       fullscreenable: false,
-      backgroundColor: '#3d3d3d',
+      backgroundColor: appThemeTokens.colorBgContent,
       title: dialogOptions.title,
       webPreferences: {
         nodeIntegration: false,
@@ -204,6 +271,7 @@ ipcMain.handle('showNativeDialog', async (_event, options: AppDialogOptions): Pr
         preload: path.join(__dirname, "../preload/preload.js")
       },
     });
+    disableBrowserHistoryNavigation(dialogWindow);
 
     let resolved = false;
     const webContentsId = dialogWindow.webContents.id;
@@ -243,6 +311,23 @@ ipcMain.handle('showNativeDialog', async (_event, options: AppDialogOptions): Pr
   });
 })
 
+ipcMain.handle('showOpenDirectoryDialog', async (_event, title?: string): Promise<string | null> => {
+  const parentWindow = win && !win.isDestroyed() ? win : undefined;
+  const options: Electron.OpenDialogOptions = {
+    title: title || 'Select Folder',
+    properties: ['openDirectory']
+  };
+  const result = parentWindow
+    ? await dialog.showOpenDialog(parentWindow, options)
+    : await dialog.showOpenDialog(options);
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+
+  return result.filePaths[0];
+})
+
 ipcMain.handle('getNativeDialogOptions', (event) => {
   return dialogOptionsByWebContentsId.get(event.sender.id);
 })
@@ -252,3 +337,265 @@ ipcMain.handle('closeNativeDialog', (event, response: number) => {
 })
 
 /* ipcMain处理事件 结束 */
+
+async function readTextFilePreviewData(
+  filePath: string,
+  title?: string,
+  metadata?: Partial<TextFilePreviewData>
+): Promise<TextFilePreviewData> {
+  const previewTitle = title || path.basename(filePath);
+  try {
+    const stats = await fs.promises.stat(filePath);
+    const fileHandle = await fs.promises.open(filePath, 'r');
+    try {
+      const readLength = Math.min(stats.size, TEXT_FILE_PREVIEW_MAX_BYTES);
+      const buffer = Buffer.alloc(readLength);
+      await fileHandle.read(buffer, 0, readLength, 0);
+      return {
+        ...metadata,
+        title: previewTitle,
+        filePath,
+        content: buffer.toString('utf-8'),
+        isTruncated: stats.size > TEXT_FILE_PREVIEW_MAX_BYTES,
+      };
+    } finally {
+      await fileHandle.close();
+    }
+  } catch (error: any) {
+    return {
+      ...metadata,
+      title: previewTitle,
+      filePath,
+      content: '',
+      isTruncated: false,
+      error: error?.message || error?.toString() || 'Failed to read file',
+    };
+  }
+}
+
+ipcMain.handle('showTextFilePreview', async (
+  _event,
+  filePath: string,
+  title?: string,
+  serverFolderPath?: string,
+  modFolderName?: string,
+  selectedType?: string,
+  saveSourcePath?: string
+) => {
+  const parentWindow = win && !win.isDestroyed() ? win : undefined;
+  const previewWidth = textFilePreviewWindowSize.width;
+  const previewHeight = textFilePreviewWindowSize.height;
+  const parentBounds = parentWindow?.getBounds();
+  const previewPosition = parentBounds
+    ? {
+        x: Math.round(parentBounds.x + (parentBounds.width - previewWidth) / 2),
+        y: Math.round(parentBounds.y + (parentBounds.height - previewHeight) / 2),
+      }
+    : undefined;
+  const previewWindow = new BrowserWindow({
+    width: previewWidth,
+    height: previewHeight,
+    x: previewPosition?.x,
+    y: previewPosition?.y,
+    minWidth: textFilePreviewWindowSize.minWidth,
+    minHeight: textFilePreviewWindowSize.minHeight,
+    parent: parentWindow,
+    modal: false,
+    show: false,
+    frame: false,
+    hasShadow: true,
+    thickFrame: true,
+    resizable: true,
+    minimizable: true,
+    maximizable: true,
+    fullscreenable: false,
+    backgroundColor: appThemeTokens.colorBgContent,
+    title: title || path.basename(filePath),
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, "../preload/preload.js")
+    },
+  });
+  disableBrowserHistoryNavigation(previewWindow);
+
+  const webContentsId = previewWindow.webContents.id;
+  textFilePreviewByWebContentsId.set(webContentsId, await readTextFilePreviewData(filePath, title, {
+    serverFolderPath,
+    modFolderName,
+    selectedType,
+    saveSourcePath,
+  }));
+
+  previewWindow.once('ready-to-show', () => {
+    previewWindow.setHasShadow(true);
+    previewWindow.show();
+  });
+  previewWindow.on('closed', () => {
+    textFilePreviewByWebContentsId.delete(webContentsId);
+  });
+
+  if (process.env.ELECTRON_RENDERER_URL) {
+    await previewWindow.loadURL(`${process.env.ELECTRON_RENDERER_URL}/#/TextFilePreview`);
+  } else {
+    await previewWindow.loadFile(path.join(__dirname, "../renderer/index.html"), { hash: 'TextFilePreview' });
+  }
+
+  return true;
+})
+
+ipcMain.handle('getTextFilePreviewData', (event) => {
+  return textFilePreviewByWebContentsId.get(event.sender.id);
+})
+
+ipcMain.handle('closeTextFilePreview', (event) => {
+  const previewWindow = BrowserWindow.fromWebContents(event.sender);
+  if (previewWindow && !previewWindow.isDestroyed()) {
+    previewWindow.close();
+  }
+})
+
+ipcMain.handle('showTextFilePreviewInFolder', (event) => {
+  const previewData = textFilePreviewByWebContentsId.get(event.sender.id);
+  if (previewData?.filePath) {
+    shell.showItemInFolder(previewData.filePath);
+  }
+})
+
+ipcMain.handle('showTextFileEditor', async (
+  _event,
+  filePath: string,
+  title: string | undefined,
+  serverFolderPath: string,
+  modFolderName: string,
+  selectedType?: string,
+  saveSourcePath?: string
+) => {
+  const parentWindow = win && !win.isDestroyed() ? win : undefined;
+  const editorWidth = textFileEditorWindowSize.width;
+  const editorHeight = textFileEditorWindowSize.height;
+  const parentBounds = parentWindow?.getBounds();
+  const editorPosition = parentBounds
+    ? {
+        x: Math.round(parentBounds.x + (parentBounds.width - editorWidth) / 2),
+        y: Math.round(parentBounds.y + (parentBounds.height - editorHeight) / 2),
+      }
+    : undefined;
+  const editorWindow = new BrowserWindow({
+    width: editorWidth,
+    height: editorHeight,
+    x: editorPosition?.x,
+    y: editorPosition?.y,
+    minWidth: textFileEditorWindowSize.minWidth,
+    minHeight: textFileEditorWindowSize.minHeight,
+    parent: parentWindow,
+    modal: false,
+    show: false,
+    frame: false,
+    hasShadow: true,
+    thickFrame: true,
+    resizable: true,
+    minimizable: true,
+    maximizable: true,
+    fullscreenable: false,
+    backgroundColor: appThemeTokens.colorBgContent,
+    title: title || path.basename(filePath),
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, "../preload/preload.js")
+    },
+  });
+  disableBrowserHistoryNavigation(editorWindow);
+
+  const webContentsId = editorWindow.webContents.id;
+  textFileEditorByWebContentsId.set(webContentsId, await readTextFilePreviewData(filePath, title, {
+    serverFolderPath,
+    modFolderName,
+    selectedType,
+    saveSourcePath,
+  }) as TextFileEditorData);
+
+  editorWindow.once('ready-to-show', () => {
+    editorWindow.setHasShadow(true);
+    editorWindow.show();
+  });
+  editorWindow.on('closed', () => {
+    textFileEditorByWebContentsId.delete(webContentsId);
+  });
+
+  if (process.env.ELECTRON_RENDERER_URL) {
+    await editorWindow.loadURL(`${process.env.ELECTRON_RENDERER_URL}/#/TextFileEditor`);
+  } else {
+    await editorWindow.loadFile(path.join(__dirname, "../renderer/index.html"), { hash: 'TextFileEditor' });
+  }
+
+  return true;
+})
+
+ipcMain.handle('minimizeTextFilePreview', (event) => {
+  const previewWindow = BrowserWindow.fromWebContents(event.sender);
+  if (previewWindow && !previewWindow.isDestroyed()) {
+    previewWindow.minimize();
+  }
+})
+
+ipcMain.handle('toggleMaximizeTextFilePreview', (event) => {
+  const previewWindow = BrowserWindow.fromWebContents(event.sender);
+  if (!previewWindow || previewWindow.isDestroyed()) {
+    return false;
+  }
+  if (previewWindow.isMaximized()) {
+    previewWindow.unmaximize();
+    return false;
+  }
+  previewWindow.maximize();
+  return true;
+})
+
+ipcMain.handle('isTextFilePreviewMaximized', (event) => {
+  const previewWindow = BrowserWindow.fromWebContents(event.sender);
+  return previewWindow && !previewWindow.isDestroyed() ? previewWindow.isMaximized() : false;
+})
+
+ipcMain.handle('getTextFileEditorData', (event) => {
+  return textFileEditorByWebContentsId.get(event.sender.id);
+})
+
+ipcMain.handle('closeTextFileEditor', (event) => {
+  const editorWindow = BrowserWindow.fromWebContents(event.sender);
+  if (editorWindow && !editorWindow.isDestroyed()) {
+    editorWindow.close();
+  }
+})
+
+ipcMain.handle('minimizeTextFileEditor', (event) => {
+  const editorWindow = BrowserWindow.fromWebContents(event.sender);
+  if (editorWindow && !editorWindow.isDestroyed()) {
+    editorWindow.minimize();
+  }
+})
+
+ipcMain.handle('toggleMaximizeTextFileEditor', (event) => {
+  const editorWindow = BrowserWindow.fromWebContents(event.sender);
+  if (!editorWindow || editorWindow.isDestroyed()) {
+    return false;
+  }
+  if (editorWindow.isMaximized()) {
+    editorWindow.unmaximize();
+    return false;
+  }
+  editorWindow.maximize();
+  return true;
+})
+
+ipcMain.handle('isTextFileEditorMaximized', (event) => {
+  const editorWindow = BrowserWindow.fromWebContents(event.sender);
+  return editorWindow && !editorWindow.isDestroyed() ? editorWindow.isMaximized() : false;
+})
+
+ipcMain.handle('notifyTextFileEditorSaved', (_event) => {
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('ce-manual-confirmation-saved');
+  }
+})

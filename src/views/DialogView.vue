@@ -75,15 +75,15 @@ const iconName = computed<FluentIconName>(() => {
 const iconColor = computed(() => {
   switch (dialogOptions.value.type) {
     case 'error':
-      return '#f5222d';
+      return 'var(--app-color-error)';
     case 'question':
-      return '#b20000';
+      return 'var(--app-color-primary)';
     case 'warning':
-      return '#faad14';
+      return 'var(--app-color-warning)';
     case 'info':
-      return '#52c41a';
+      return 'var(--app-color-success)';
     default:
-      return 'rgba(255, 255, 255, 0.85)';
+      return 'var(--app-color-text-heading)';
   }
 });
 
@@ -100,16 +100,12 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="less">
-@import '@/styles/themes/dark.less';
-
-@dialog-bg: #2f2f2f;
-
 .dialog-shell {
   width: 100vw;
   height: 100vh;
   padding: 0;
   box-sizing: border-box;
-  background: @dialog-bg;
+  background: var(--app-color-bg-content);
   color: var(--app-color-text);
 }
 
@@ -119,17 +115,18 @@ onMounted(async () => {
   display: grid;
   grid-template-rows: auto 1fr auto;
   border: none;
-  background: @dialog-bg;
+  background: var(--app-color-bg-content);
   box-shadow: none;
   box-sizing: border-box;
 }
 
 .dialog-header {
-  height: 42px;
-  padding: 0 12px 0 16px;
+  height: var(--app-titlebar-height);
+  padding: 0 0 0 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background: var(--app-color-bg);
   -webkit-app-region: drag;
 }
 
@@ -142,7 +139,7 @@ onMounted(async () => {
   h3 {
     margin: 0;
     color: var(--app-color-text-heading);
-    font-size: 15px;
+    font-size: 12px;
     font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
@@ -151,8 +148,8 @@ onMounted(async () => {
 }
 
 .dialog-close {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: var(--app-titlebar-height);
   padding: 0;
   border: none;
   display: flex;
@@ -164,13 +161,17 @@ onMounted(async () => {
   -webkit-app-region: no-drag;
 
   &:hover {
-    color: #fff;
-    background: @error-color;
+    color: var(--app-color-text-heading);
+    background: var(--app-color-error);
   }
 }
 
 .dialog-body {
-  padding: 2px 22px 10px 48px;
+  min-height: 0;
+  padding: 10px 22px 10px 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   overflow: hidden;
 
   p {
@@ -183,7 +184,8 @@ onMounted(async () => {
 
 .dialog-detail {
   margin-top: 8px;
-  color: rgba(229, 229, 229, 0.62);
+  color: var(--app-color-text);
+  opacity: 0.82;
 }
 
 .dialog-footer {
@@ -193,6 +195,6 @@ onMounted(async () => {
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  background: @dialog-bg;
+  background: var(--app-color-bg-content);
 }
 </style>

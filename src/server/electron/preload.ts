@@ -20,6 +20,7 @@ const ipc = {
             "resetCountFile",
             "os-service-process-error",
             "winInfo",
+            "ce-manual-confirmation-saved",
         ],
         // From render to main and back again.
         "invoke": [
@@ -32,9 +33,25 @@ const ipc = {
             "countFilesInMultipFolder",
             "copyMultipleFolders",
             "copyFoldersWithProgress",
+            "copyFilesWithProgress",
             "showNativeDialog",
+            "showOpenDirectoryDialog",
             "getNativeDialogOptions",
-            "closeNativeDialog"
+            "closeNativeDialog",
+            "showTextFilePreview",
+            "getTextFilePreviewData",
+            "closeTextFilePreview",
+            "showTextFilePreviewInFolder",
+            "minimizeTextFilePreview",
+            "toggleMaximizeTextFilePreview",
+            "isTextFilePreviewMaximized",
+            "showTextFileEditor",
+            "getTextFileEditorData",
+            "closeTextFileEditor",
+            "minimizeTextFileEditor",
+            "toggleMaximizeTextFileEditor",
+            "isTextFileEditorMaximized",
+            "notifyTextFileEditorSaved"
         ]
     }
 };

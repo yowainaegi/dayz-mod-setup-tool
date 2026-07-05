@@ -3,6 +3,19 @@
 * {
     margin: 0;
     padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+    font-size: 12px;
+    overflow: hidden;
+}
+
+::selection {
+    color: var(--app-color-text-heading);
+    background-color: var(--app-color-primary);
 }
 
 .view-wrap {
@@ -10,10 +23,11 @@
     height: 100%;
     position: fixed;
     color: var(--app-color-text);
+    background-color: var(--app-color-bg-content);
 }
 
 .view-content {
-    padding: 10px;
+    padding: 6px;
 }
 
 .view-content-center {
@@ -27,9 +41,61 @@
 .footer-content {
     position: absolute;
     width: 100%;
-    bottom: 8%;
+    bottom: 5%;
     display: flex;
+    gap: 16px;
     justify-content: space-around;
+}
+
+.ant-btn {
+    min-width: 0;
+    height: 26px;
+    padding-inline: 8px;
+}
+
+.ant-btn-sm {
+    height: 22px;
+    padding-inline: 6px;
+}
+
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-select-selector {
+    min-height: 26px !important;
+}
+
+.ant-input,
+.ant-input-affix-wrapper {
+    padding-block: 2px !important;
+    padding-inline: 8px !important;
+}
+
+.ant-select-single {
+    height: 26px;
+}
+
+.ant-select-single .ant-select-selector {
+    height: 26px !important;
+    padding-inline: 8px !important;
+}
+
+.ant-select-single .ant-select-selection-item,
+.ant-select-single .ant-select-selection-placeholder {
+    line-height: 24px !important;
+}
+
+.ant-btn-default:not(:disabled):hover,
+.ant-btn-default:not(:disabled):active {
+    color: rgba(255, 255, 255, 0.85);
+    background-color: #111;
+    border-color: #111;
+}
+
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-input-group-addon,
+.ant-select-selector {
+    border-color: rgba(255, 255, 255, 0.22) !important;
 }
 
 .select-disabled {
@@ -89,39 +155,63 @@
 }
 
 // 表格样式
+.ant-progress .ant-progress-bg,
+.ant-progress .ant-progress-success-bg {
+    background-color: var(--app-color-primary);
+    border-radius: var(--app-border-radius);
+}
+
+.ant-progress .ant-progress-inner {
+    background-color: var(--app-color-hover-bg);
+    border-radius: var(--app-border-radius);
+}
+
 .ant-table-container {
-    border: 1px solid @table-container-border-color;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     .ant-table-thead > tr > th, .ant-table-tbody > tr > td, .ant-table tfoot > tr > th, .ant-table tfoot > tr > td {
-        padding: 10px;
+        padding: 6px 8px;
+        border-bottom-color: rgba(255, 255, 255, 0.1);
     }
 
     .ant-table-tbody > tr {
         .ant-table-empty {
-            background: #3d3d3d;
+            background: var(--app-color-hover-bg);
             color: red;
         }
         .ant-table-expanded-row-fixed {
             color: @text-color;
         }
         :hover {
-            background: #3d3d3d;
+            background: var(--app-color-hover-bg);
         }
     }
 }
 
-// — 整个滚动条
+table {
+    th,
+    td {
+        border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+}
+
 ::-webkit-scrollbar {
-    width: 10px;
+    width: 8px;
+    height: 8px;
 }
-//::-webkit-scrollbar-button — 滚动条上的按钮 (上下箭头)
-// — 滚动条上的滚动滑块
+
 ::-webkit-scrollbar-thumb {
-    background-color: rgba(128, 128, 128, 0.5);
+    background-color: rgba(255, 255, 255, 0.22);
+    border-radius: var(--app-border-radius);
 }
-// — 滚动条轨道
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.34);
+}
+
 ::-webkit-scrollbar-track {
-    background-color: rgba(185, 185, 185, 0);
+    background-color: rgba(0, 0, 0, 0.32);
 }
-//::-webkit-scrollbar-track-piece — 滚动条没有滑块的轨道部分
-//::-webkit-scrollbar-corner — 当同时有垂直滚动条和水平滚动条时交汇的部分
-//::-webkit-resizer — 某些元素的corner部分的部分样式(例:textarea的可拖动按钮)
+
+::-webkit-scrollbar-corner {
+    background-color: transparent;
+}

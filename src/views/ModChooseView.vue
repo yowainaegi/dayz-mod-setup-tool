@@ -1,7 +1,7 @@
 <template>
   <div id="ModChoose" class="view-wrap">
-    <div class="view-content">
-      <a-row>
+    <div class="view-content mod-choose-content">
+      <a-row class="mod-choose-row" :gutter="16">
         <a-col :span="12">
           <div class="mode-list-title">{{ `${$t('ModChooseView.subscriptionTitle')}（${calculationModListNumber(MOD_LIST_TYPE.SUBSCRIBED)}）` }}</div>
           <div class="mode-list">
@@ -10,7 +10,7 @@
             <a-table
                 :columns="columns"
                 :data-source="filteredModListSubsribed"
-                :scroll="{ y: tableHeight }"
+                :scroll="tableScroll"
                 :pagination="false"
                 :expand-row-by-click="true">
               <template #expandIcon="props">
@@ -66,7 +66,7 @@
             <a-table
                 :columns="modAddedColumns"
                 :data-source="filteredModListAdded"
-                :scroll="{ y: tableHeight }"
+                :scroll="tableScroll"
                 :pagination="false"
                 :expand-row-by-click="true">
               <template #expandIcon="props">
@@ -81,12 +81,6 @@
                 <template v-if="column.key === 'action'">
                   <a-button type="primary" size="small" @click="removeToSubscribedList($event, record)" :disabled="record.CanBeRemovedDZMSUTool === false">
                     <FluentIcon name="arrow-left" />
-                  </a-button>
-                </template>
-                <template v-if="column.key === 'markAsMap'">
-                  <a-button type="primary" size="small" @click="markAsMap($event, record)" :disabled="record.CanBeRemovedDZMSUTool === false">
-                      <FluentIcon v-if="!record.isMapMod" name="line-horizontal" />
-                      <FluentIcon v-else name="checkmark" />
                   </a-button>
                 </template>
               </template>
@@ -119,10 +113,10 @@
         </a-col>
       </a-row>
     </div>
-    <div class="footer-content">
+    <FixedFooterActions>
       <a-button @click="back">{{ $t('ModChooseView.back') }}</a-button>
-      <a-button @click="next" type="primary">{{ operationMode === 'create'? $t('ModChooseView.createNext'):$t('ModChooseView.updateNext')  }}</a-button>
-    </div>
+      <a-button @click="next" type="primary">{{ primaryActionText }}</a-button>
+    </FixedFooterActions>
   </div>
 </template>
 
@@ -130,14 +124,15 @@
 import {i18n} from "@/i18n";
 import {useStore} from "vuex";
 import {useRouter} from "vue-router";
-import {computed, Ref, ref, watch} from "vue";
-import {getModList, getModIdListByServerConfigFile} from "@/server/api/ModChooseApi";
+import {computed, Ref, ref} from "vue";
+import {getModList, getModIdListByServerConfigFile, saveModIdListToPresetFile} from "@/server/api/ModChooseApi";
 import ModInfo from "@/server/models/ModInfo";
 import ServerConfigFile from "@/server/models/ServerConfigFile";
 import { deepClone } from "@/utils/Util";
 import { MOD_BE_SEARCHE_STATUS, MOD_LIST_TYPE } from "@/server/models/Constant";
 import FluentIcon from "@/components/common/FluentIcon/index.vue";
-import { confirmNativeDialog, warningNativeDialog } from "@/utils/nativeDialog";
+import { confirmNativeDialog } from "@/utils/nativeDialog";
+import FixedFooterActions from "@/components/common/FixedFooterActions/index.vue";
 // import { getModPreviewImage } from "@/utils/OsUtils";
 
 
@@ -146,11 +141,10 @@ const store = useStore();
 
 const operationMode = store.state.operationMode;
 
-// winInfo store
-const winInfo = computed(() => store.state.winInfo);
+// Table body uses flex height from the surrounding layout.
+const tableScroll = { y: '100%' };
 
 // 列表高度
-let tableHeight = ref(calHeight(winInfo.value.screenHeight));
 
 // 模组列表源数据
 const modList_src: Ref<ModInfo[]> = ref([]);
@@ -160,8 +154,7 @@ const modList_show: Ref<ModInfo[]> = ref([]);
 
 // 服务器配置文件
 const serverConfigFile:ServerConfigFile  = store.state.selectedConfigFile;
-
-let markedMapModId: string = store.state.markedMapModId;
+const workingPresetFilePath = serverConfigFile.active_preset_file_path || serverConfigFile.preset_file_name;
 
 const columns = [
   {
@@ -183,11 +176,6 @@ const modAddedColumns = [
     key: 'DisplayName',
   },
   {
-    title: i18n.global.t('ModChooseView.tableTitle.mapAction'),
-    key: 'markAsMap',
-    width: 90
-  },
-  {
     title: i18n.global.t('ModChooseView.tableTitle.action'),
     key: 'action',
     width: 90
@@ -202,27 +190,6 @@ let modAddedKey: Ref<string | null> = ref(null);
 // 更新标题
 store.commit('updatePageTitle', i18n.global.t('ModChooseView.pageTitle'));
 
-watch(winInfo, debounce((newValue: any, oldValue: any) => {
-  tableHeight.value = calHeight(newValue.screenHeight);
-      }, 50), // 300ms 延迟执行，你可以根据需要调整
-      { deep: true } // 深度监听 winInfo 对象
-)
-
-/**
- * 计算table高度
- */
-function calHeight(screenHeight: number): number {
-  let otherHeightPercent = 0.3;
-  if (screenHeight > 800 && screenHeight <= 1000) {
-    otherHeightPercent = 0.25;
-  } else if (screenHeight > 1000 && screenHeight <= 1300) {
-    otherHeightPercent = 0.25;
-  } else if (screenHeight > 1300) {
-    otherHeightPercent = 0.2;
-  }
-  return screenHeight - (screenHeight * otherHeightPercent);
-}
-
 // 读取预设文件
 getModList().then((res: ModInfo[]) => {
   res.forEach(item => {
@@ -232,8 +199,8 @@ getModList().then((res: ModInfo[]) => {
   sortByDisplayName(modList_show.value);
 
   // 根据配置文件id读取配置文件中的预设文件中的所有已经加入的modId
-  if (serverConfigFile.preset_file_name) {
-    getModIdListByServerConfigFile(serverConfigFile.preset_file_name).then((modAddedIdList: string[]) => {
+  if (workingPresetFilePath) {
+    getModIdListByServerConfigFile(workingPresetFilePath).then((modAddedIdList: string[]) => {
       modList_show.value.forEach(item => {
         modAddedIdList.forEach(addedId => {
           if(item.Id === addedId) {
@@ -278,6 +245,20 @@ const filteredModListAdded = computed(() => {
   return modList_show.value.filter(item => item.AddedStatus === MOD_LIST_TYPE.ADDED && item.SearchedStatus === MOD_BE_SEARCHE_STATUS.SEARCHED);
 })
 
+const hasUpdateModChanges = computed(() => {
+  return operationMode === 'update' && hasPendingModChanges(modList_show.value);
+})
+
+const primaryActionText = computed(() => {
+  if (operationMode === 'create') {
+    return i18n.global.t('ModChooseView.createNext');
+  }
+
+  return hasUpdateModChanges.value
+    ? i18n.global.t('ModChooseView.updateNext')
+    : i18n.global.t('ConfigFileListView.next');
+})
+
 /**
  * 将MOD加载到安装列表
  */
@@ -286,6 +267,7 @@ function addToInstalledList(event: Event, record: ModInfo) {
   modList_show.value.forEach((item: ModInfo) => {
     if(item.Id === record.Id) {
       item.AddedStatus = MOD_LIST_TYPE.ADDED;
+      item.CanBeRemovedDZMSUTool = true;
     }
   })
 }
@@ -315,16 +297,11 @@ function sortByDisplayName(list: ModInfo[]) {
   list.sort((a: ModInfo, b: ModInfo) => a.DisplayName.localeCompare(b.DisplayName))
 }
 
-// 自定义防抖函数
-function debounce<T extends (...args: any[]) => any>(fn: T, delay: number): (...args: Parameters<T>) => void {
-  let timeout: number | undefined;
-  
-  return (...args: Parameters<T>): void => {
-    if (timeout) clearTimeout(timeout);
-    timeout = window.setTimeout(() => fn(...args), delay);
-  };
+function hasPendingModChanges(modList: ModInfo[]): boolean {
+  return modList.some((item: ModInfo) => {
+    return item.AddedStatus === MOD_LIST_TYPE.ADDED && item.CanBeRemovedDZMSUTool;
+  });
 }
-
 
 // function getModPreviewImageSync(expanded: any, record: ModInfo): void {
 //   if(expanded) {
@@ -347,23 +324,10 @@ function debounce<T extends (...args: any[]) => any>(fn: T, delay: number): (...
 //   }
 // }
 
-function markAsMap(event: Event, record: ModInfo) {
-  event.stopPropagation();
-  modList_show.value.forEach(mod => {
-    if(mod.Id === record.Id) {
-      mod.isMapMod = !mod.isMapMod;
-      markedMapModId = mod.Id;
-    } else {
-      mod.isMapMod = false;
-    }
-  });
-}
-
 /**
  * 返回
  */
 function back() {
-  store.commit('updateMarkedMapModId', null)
   router.push('/ConfigFileList');
 }
 
@@ -371,7 +335,11 @@ async function next() {
   const  modAddedList = modList_show.value.filter((item: ModInfo) => {
     return item.AddedStatus === MOD_LIST_TYPE.ADDED;
   });
-  store.commit('updateMarkedMapModId', markedMapModId)
+  const persistWorkingPreset = async () => {
+    if (workingPresetFilePath) {
+      await saveModIdListToPresetFile(workingPresetFilePath, modAddedList.map((item) => item.Id));
+    }
+  };
   if(operationMode === 'create') {
     const confirmed = await confirmNativeDialog({
       title: i18n.global.t('common.modal.confirm.title'),
@@ -380,24 +348,17 @@ async function next() {
       cancelText: i18n.global.t('common.modal.confirm.cancel'),
     })
     if (confirmed) {
+      await persistWorkingPreset();
       store.commit('updateModAddedList', modAddedList);
       router.push('/EditServer');
     }
   } else {
 
-    let hasUpdateMod = false;
-    for(let item of modAddedList) {
-      if(item.CanBeRemovedDZMSUTool) {
-        hasUpdateMod = true;
-        break;
-      }
-    }
-    if(!hasUpdateMod) {
-      await warningNativeDialog({
-        title: i18n.global.t('common.modal.warning.title'),
-        message: i18n.global.t('ModChooseView.updateWarning'),
-        okText: i18n.global.t('common.modal.confirm.yes')
-      })
+    if(!hasPendingModChanges(modList_show.value)) {
+      await persistWorkingPreset();
+      store.commit('updateModAddedList', modAddedList);
+      store.commit('updateToolCreatedFolderPathMap', new Map<string, string[]>());
+      router.push('/ModMountConfig');
     } else {
       const confirmed = await confirmNativeDialog({
         title: i18n.global.t('common.modal.confirm.title'),
@@ -406,6 +367,7 @@ async function next() {
         cancelText: i18n.global.t('common.modal.confirm.cancel'),
       })
       if (confirmed) {
+        await persistWorkingPreset();
         store.commit('updateModAddedList', modAddedList);
         router.push('/EditServer');
       }
@@ -415,12 +377,87 @@ async function next() {
 </script>
 
 <style scoped lang="less">
+#ModChoose {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mod-choose-content {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  padding: 6px 18px 0;
+  overflow: hidden;
+}
+
+.mod-choose-row {
+  height: 100%;
+}
+
+.mod-choose-row > :deep(.ant-col) {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .mode-list-title {
+  flex: 0 0 22px;
   text-align: center;
+  height: 22px;
+  line-height: 22px;
 }
 
 .mode-list {
-  padding: 0 20px 0 20px;
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mode-list :deep(.ant-input-search) {
+  flex: 0 0 auto;
+}
+
+.mode-list :deep(.ant-table-wrapper) {
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.mode-list :deep(.ant-spin-nested-loading),
+.mode-list :deep(.ant-spin-container),
+.mode-list :deep(.ant-table),
+.mode-list :deep(.ant-table-container) {
+  height: 100%;
+  min-height: 0;
+}
+
+.mode-list :deep(.ant-spin-container),
+.mode-list :deep(.ant-table),
+.mode-list :deep(.ant-table-container) {
+  display: flex;
+  flex-direction: column;
+}
+
+.mode-list :deep(.ant-table-container) {
+  flex: 1;
+}
+
+.mode-list :deep(.ant-table-header) {
+  flex: 0 0 auto;
+}
+
+.mode-list :deep(.ant-table-body) {
+  flex: 1;
+  min-height: 0;
+  max-height: none !important;
+  overflow-y: auto !important;
 }
 
 .icon_down_rotate-enter-active,

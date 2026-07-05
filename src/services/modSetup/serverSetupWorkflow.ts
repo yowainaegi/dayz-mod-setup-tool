@@ -1,9 +1,8 @@
 import { createServerProfileFolder, editServerDZCfg, editStartBatFile } from "@/server/api/EditServerApi";
-import { modifyMapMissionPathByServerId } from "@/server/sqlite/SqlFuncs/ServerConfigFile";
 import { getPathSep } from "@/utils/OsUtils";
 import ProgressManager from "@/utils/ProgressManager";
 import ModInfo from "@/server/models/ModInfo";
-import { CREATED_CONFIG_FOLDER_NAME, MOD_CONFIG_FOLDERS, MOD_FOLDER_NAME, TASK_MODE } from "./constants";
+import { CREATED_CONFIG_FOLDER_NAME, MOD_CONFIG_FOLDERS, MOD_FOLDER_NAME, MOD_MOUNT_MODE, TASK_MODE } from "./constants";
 import {
     ModCopyItem,
     ServerSetupWorkflowParams,
@@ -44,7 +43,7 @@ function buildModCopyItems(modList: ModInfo[], serverFolderPath: string, pathSep
             folderName: mod.modFolderName,
             targetPath,
             createdConfigRootPath: `${targetPath}${pathSep}${CREATED_CONFIG_FOLDER_NAME}`,
-            isMapMod: mod.isMapMod
+            isMapMod: false
         };
     });
 }
@@ -52,7 +51,7 @@ function buildModCopyItems(modList: ModInfo[], serverFolderPath: string, pathSep
 function buildCreatedFolderDetailPaths(modCopyItem: ModCopyItem, pathSep: string): string[] {
     const folderPaths: string[] = [];
     for (const folderName of MOD_CONFIG_FOLDERS) {
-        if (folderName !== 'map_missions' || modCopyItem.isMapMod) {
+        if (folderName !== 'map_missions') {
             folderPaths.push(`${modCopyItem.createdConfigRootPath}${pathSep}${folderName}`);
         }
     }
@@ -108,6 +107,7 @@ async function runServerSetupWorkflow(params: ServerSetupWorkflowParams): Promis
     }
 
     const modsPathList = modList.map((mod) => mod.ExtensionPath);
+    const modMountMode = configFile.mod_mount_mode || MOD_MOUNT_MODE.COPY;
 
     if (!configFile.pure_server_folder_path || !configFile.server_folder_path || !configFile.deploy_server_folder_path) {
         return { createdFolderPathMap };
@@ -141,29 +141,40 @@ async function runServerSetupWorkflow(params: ServerSetupWorkflowParams): Promis
     );
 
     onStageTitleChange(stageTitles.copyMods);
-    onCountingChange(true);
-    await window.ipcRenderer.invoke('countFilesInMultipFolder', modsPathList);
+    onCopyingFileChange(null, null);
+    onCountingChange(modMountMode === MOD_MOUNT_MODE.COPY);
+    if (modMountMode === MOD_MOUNT_MODE.COPY) {
+        await window.ipcRenderer.invoke('countFilesInMultipFolder', modsPathList);
+    }
 
     for (const modCopyItem of modCopyItems) {
         onCountingChange(false);
-        await window.ipcRenderer.invoke(
-            'copyFolderWithProgress',
-            `${taskNo++}`,
-            modCopyItem.sourcePath,
-            modCopyItem.targetPath
-        );
+        if (modMountMode === MOD_MOUNT_MODE.JUNCTION) {
+            onCopyingFileChange('Create directory links', modCopyItem.targetPath);
+            await window.ipcRenderer.invoke(
+                'serverAPI',
+                'createModFolderLinks',
+                modCopyItem.sourcePath,
+                modCopyItem.targetPath
+            );
+            progressManager.updateProgress(`${taskNo++}`, 100);
+        } else {
+            await window.ipcRenderer.invoke(
+                'copyFolderWithProgress',
+                `${taskNo++}`,
+                modCopyItem.sourcePath,
+                modCopyItem.targetPath
+            );
+        }
         await window.ipcRenderer.invoke(
             'serverAPI',
             'createModConfigFolders',
             modCopyItem.createdConfigRootPath,
             MOD_CONFIG_FOLDERS,
-            modCopyItem.isMapMod
+            false
         );
 
         const toolCreatedFolderDetailPaths = buildCreatedFolderDetailPaths(modCopyItem, pathSep);
-        if (modCopyItem.isMapMod && configFile.server_id) {
-            await modifyMapMissionPathByServerId(configFile.server_id, `${modCopyItem.createdConfigRootPath}${pathSep}map_missions`);
-        }
         createdFolderPathMap.set(modCopyItem.createdConfigRootPath, toolCreatedFolderDetailPaths);
     }
 

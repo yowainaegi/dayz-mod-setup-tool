@@ -1,7 +1,7 @@
 import { transToResData } from "@/utils/ResUtils";
 import ResData from "@/server/models/ResData";
 import ConfigFile from "@/server/models/ServerConfigFile";
-import { insertConfigFile, modifyConfigFile, selectConfigFileById } from "@/server//sqlite/SqlFuncs/ServerConfigFile";
+import { insertConfigFile, modifyConfigFile, modifyConfigWorkspaceStateById, modifyConfigStatusById, selectConfigFileById } from "@/server//sqlite/SqlFuncs/ServerConfigFile";
 import { recordLog } from "@/server/sqlite/SqlFuncs/common/common";
 import { i18n } from "@/i18n";
 import { APIError } from "@/server/constants/LogType";
@@ -90,6 +90,22 @@ export function addConfigFile(configFile: ConfigFile): Promise<boolean> {
 export function updateConfigFile(configFile: ConfigFile): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
         modifyConfigFile(configFile).then(() => {
+            resolve(true);
+        })
+    })
+}
+
+export function updateConfigWorkspaceState(configFileId: number, configStatus: string, sourcePresetFilePath: string | null, activePresetFilePath: string | null): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+        modifyConfigWorkspaceStateById(configFileId, configStatus, sourcePresetFilePath, activePresetFilePath).then(() => {
+            resolve(true);
+        })
+    })
+}
+
+export function updateConfigStatus(configFileId: number, configStatus: string): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+        modifyConfigStatusById(configFileId, configStatus).then(() => {
             resolve(true);
         })
     })

@@ -1,14 +1,15 @@
 <template>
   <div id="SelectType" class="view-wrap">
-    <div class="view-content view-content-center select-disabled">
+    <div class="view-content select-type-content select-disabled">
       <a-typography-title :level="1">
         {{ $t('SelectTypeView.title') }}
       </a-typography-title>
-      <div class="btn-area">
-        <a-button @click="toUpdate">{{ $t('SelectTypeView.update') }}</a-button>
-        <a-button type="primary" @click="toCreate">{{ $t('SelectTypeView.create') }}</a-button>
-      </div>
     </div>
+
+    <FixedFooterActions>
+      <a-button @click="toUpdate">{{ $t('SelectTypeView.update') }}</a-button>
+      <a-button type="primary" @click="toCreate">{{ $t('SelectTypeView.create') }}</a-button>
+    </FixedFooterActions>
   </div>
 </template>
 
@@ -17,6 +18,7 @@ import {useStore} from "vuex";
 import { useRouter } from "vue-router";
 import {i18n} from "@/i18n";
 import { onDeactivated } from "vue";
+import FixedFooterActions from "@/components/common/FixedFooterActions/index.vue";
 
 // store
 const store = useStore(); 
@@ -44,11 +46,26 @@ onDeactivated(() => {
 })
 </script>
 
-<style scoped>
-.btn-area {
-  margin-top: 100px;
-  width: 100%;
+<style scoped lang="less">
+#SelectType {
+  position: relative;
+  height: 100%;
   display: flex;
-  justify-content: space-around;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.select-type-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  text-align: center;
+}
+
+:deep(.ant-typography) {
+  margin-bottom: 0;
 }
 </style>

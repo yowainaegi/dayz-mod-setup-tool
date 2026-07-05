@@ -2,14 +2,11 @@ import ModInfo from "@/server/models/ModInfo";
 import ResData from "@/server/models/ResData";
 import { MOD_BE_SEARCHE_STATUS, MOD_LIST_TYPE, STATUS_CODE } from "@/server/models/Constant";
 import xml2js  from "xml2js";
-import {useStore} from "vuex";
 
 /**
  * 获取模组信息
  */
 export function getModList(): Promise<ModInfo[]> {
-  const store = useStore();
-  const markedMapModId = store.state.markedMapModId;
   return new Promise<ModInfo[]>((resolve) => {
     window.ipcRenderer.invoke('serverAPI', 'getPathSep').then((pathSepData: ResData) => {
         const PATH_SEP = pathSepData.data;
@@ -32,11 +29,7 @@ export function getModList(): Promise<ModInfo[]> {
                     }
                     let modFolderName = `${modInfoList[i].Id.substring(modInfoList[i].Id.indexOf("steam:") + "steam:".length)}-@${modInfoList[i].DisplayName}`;
                     modInfoList[i].modFolderName = modFolderName;
-                    if(markedMapModId === modInfoList[i].Id) {
-                        modInfoList[i].isMapMod = true;
-                    } else {
-                        modInfoList[i].isMapMod = false;
-                    }
+                    modInfoList[i].isMapMod = false;
                 }
                 resolve(modInfoList); 
             });
@@ -72,6 +65,33 @@ export function getModIdListByServerConfigFile(presetFilePath: string): Promise<
             reject(error);
         });
     })
+}
+
+export function saveModIdListToPresetFile(presetFilePath: string, modIdList: string[]): Promise<void> {
+    const normalizedIds = Array.from(new Set(modIdList.map((id) => id.startsWith('steam:') ? id.substring('steam:'.length) : id)));
+    const publishedIdsXml = [
+        '  <published-ids>',
+        ...normalizedIds.map((id) => `    <id>${id}</id>`),
+        '  </published-ids>'
+    ].join('\n');
+
+    return new Promise<void>((resolve, reject) => {
+        window.ipcRenderer.invoke('serverAPI', 'getFileContent', presetFilePath).then((fileContentResData: ResData) => {
+            const fileContent = fileContentResData.data as string;
+            let nextContent = '';
+            if (/<published-ids>[\s\S]*?<\/published-ids>/i.test(fileContent)) {
+                nextContent = fileContent.replace(/<published-ids>[\s\S]*?<\/published-ids>/i, publishedIdsXml);
+            } else {
+                nextContent = fileContent.replace(/<\/addons-presets>/i, `${publishedIdsXml}\n</addons-presets>`);
+            }
+
+            window.ipcRenderer.invoke('serverAPI', 'overwriteFileContent', nextContent, presetFilePath)
+                .then(() => resolve())
+                .catch((error: ResData) => reject(error));
+        }).catch((error: ResData) => {
+            reject(error);
+        });
+    });
 }
 
 function parsePresetModIds(xml2jsResult: any): string[] {

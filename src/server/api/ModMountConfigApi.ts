@@ -9,10 +9,10 @@ export function editServerDZCfg(newTemplate: string, serverDZCfgFilePath: string
             window.ipcRenderer.invoke('serverAPI', 'getFileContent', serverDZCfgFilePath).then((res: ResData) => {
                 let content: string = res.data;
 
-                const regex = /template="([^"]*?)";/;
+                const regex = /^(\s*)template\s*=\s*"([^"]*?)"\s*;/m;
 
-                const newContent = content.replace(regex, (match, p1) => {
-                    return `template = "${newTemplate}";`;
+                const newContent = content.replace(regex, (_match, indent) => {
+                    return `${indent}template = "${newTemplate}";`;
                 });
               
                 window.ipcRenderer.invoke(

@@ -12,9 +12,9 @@
         </template>
       </a-table>
     </div>
-    <div class="footer-content">
+    <FixedFooterActions>
       <a-button @click="back">{{ $t('LogListView.back') }}</a-button>
-    </div>
+    </FixedFooterActions>
   </div>
 </template>
 
@@ -26,6 +26,7 @@ import {dateFormat, DateFormat} from "@/utils/DateUtils";
 import { Ref, ref } from "vue";
 import { useRouter } from "vue-router";
 import AppLog from "@/server/models/AppLog";
+import FixedFooterActions from "@/components/common/FixedFooterActions/index.vue";
 
 interface Column {
   title: string,
@@ -80,27 +81,34 @@ function back() {
 </script>
 
 <style scoped lang="less">
-@import "@/styles/themes/dark.less";
+#LogList {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 
 .view-content {
-  position: absolute;
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  height: 100%;
+  overflow: auto;
 }
 
 .log-type-error {
-  color: @error-color;
+  color: var(--app-color-error);
 }
 
 :deep(.ant-table-placeholder) {
   .ant-table-cell {
-    color: @text-color;
+    color: var(--app-color-text);
     p {
      margin-bottom: 0; 
     }
   }
   .ant-table-cell:hover {
-    background-color: @table-row-hover-bg;
+    background-color: var(--app-color-hover-bg);
   }
 }
 </style>

@@ -39,12 +39,12 @@
         </a-form-item>
         <a-form-item :label="$t('SettingsView.RelatedPaths.pathCheck')">
           <label  v-if="checkPathStatus === 'success'">
-            <FluentIcon name="checkmark-circle" color="#52c41a" />
-            <span style="color: #52c41a;  margin-left: 5px">{{ $t('SettingsView.RelatedPaths.pathCheckSuccess') }}</span>
+            <FluentIcon name="checkmark-circle" color="var(--app-color-success)" />
+            <span class="path-check-success">{{ $t('SettingsView.RelatedPaths.pathCheckSuccess') }}</span>
           </label>
           <label v-if="checkPathStatus === 'failed'" >
-            <FluentIcon name="dismiss-circle" color="#f5222d" />
-            <span style="color: #f5222d; margin-left: 5px">{{ $t('SettingsView.RelatedPaths.pathCheckFailed') }}</span>
+            <FluentIcon name="dismiss-circle" color="var(--app-color-error)" />
+            <span class="path-check-failed">{{ $t('SettingsView.RelatedPaths.pathCheckFailed') }}</span>
           </label>
           <label v-if="checkPathStatus === 'checking'" >
             <FluentIcon name="spinner" spin />
@@ -60,10 +60,10 @@
       </a-form>
     </div>
 
-    <div class="footer-content">
+    <FixedFooterActions>
       <a-button @click="quit">{{ $t('SettingsView.back') }}</a-button>
       <a-button @click="apply" type="primary" :loading="applyLoading">{{ $t('SettingsView.apply') }}</a-button>
-    </div>
+    </FixedFooterActions>
   </div>
 </template>
 
@@ -77,6 +77,7 @@ import { getWindowsUserName, getDayZLauncherDataFolderPath, getPresetFileFolderP
 import { Ref, ref } from 'vue';
 import AppConfig from '@/server/models/AppConfig';
 import FluentIcon from "@/components/common/FluentIcon/index.vue";
+import FixedFooterActions from '@/components/common/FixedFooterActions/index.vue';
 
 interface ReloatedPath {
   // 系统用户
@@ -212,9 +213,34 @@ function apply() {
 </script>
 
 <style scoped lang="less">
-@import '@/styles/themes/dark.less';
+#Settings {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.view-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
 
 .divider {
-  border-color: @primary-color;
+  border-color: var(--app-color-primary);
+}
+
+.path-check-success,
+.path-check-failed {
+  margin-left: 5px;
+}
+
+.path-check-success {
+  color: var(--app-color-success);
+}
+
+.path-check-failed {
+  color: var(--app-color-error);
 }
 </style>

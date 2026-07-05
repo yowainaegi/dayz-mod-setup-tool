@@ -118,16 +118,15 @@ const quit = () => {
 </script>
 
 <style scoped lang="less">
-@import "@/styles/themes/dark.less";
-
 .logo {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   margin-right: 6px;
 }
 
 .top-nav-bar {
-  height: 40px;
+  height: var(--app-titlebar-height);
+  background-color: var(--app-color-bg);
   -webkit-app-region: drag;
   display: flex;
   align-items: center;
@@ -146,8 +145,8 @@ const quit = () => {
   position: absolute;
   top: 0;
   left: 50%;
-  height: 40px;
-  line-height: 40px;
+  height: var(--app-titlebar-height);
+  line-height: var(--app-titlebar-height);
   transform: translateX(-50%);
   color: var(--app-color-text-heading);
 }
@@ -161,7 +160,7 @@ const quit = () => {
 
 .traffic-icon {
   width: 40px;
-  height: 40px;
+  height: var(--app-titlebar-height);
   padding: 0;
   display: flex;
   align-items: center;
@@ -176,23 +175,23 @@ const quit = () => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
+    font-size: 12px;
     color: var(--app-color-text);
   }
 
 }
 
 .traffic-icon:hover {
-  background-color: @mouse-hover-color-base;
+  background-color: var(--app-color-appbar-hover-bg);
   cursor: default;
 
   .icon {
-    color: white;
+    color: var(--app-color-text-heading);
   }
 }
 
 .traffic-icon:last-child:hover {
-  background-color: @error-color;
+  background-color: var(--app-color-error);
 }
 
 .fade-enter-active,

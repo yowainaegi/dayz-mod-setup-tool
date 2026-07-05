@@ -32,10 +32,6 @@ if (app.isPackaged) {
             // 如果不存在，初始化数据库或复制初始数据库文件
             const dbOriginalPath = path.join(process.resourcesPath, 'data', 'app.db');
             fs.copyFileSync(dbOriginalPath, DB_PATH);
-        } else {
-            setTimeout(() => {
-                update();
-            })
         }
     }
 }
@@ -50,26 +46,54 @@ async function update () {
             console.log('Connected to the database.');
         }
     });
-    // 检查版本更新
-    // 有一个新列 `server_map_mission_path`，需要在 `server_config_file` 中存在
     await db.all("PRAGMA table_info(server_config_file)", async (err, columns) => {
         if (err) {
             console.error("Error checking table structure:", err);
             return;
         }
-        // 检查列是否已存在
-        const columnExists = columns.some((column:any) => column.name === 'server_map_mission_path');
+        const columnNames = new Set(columns.map((column:any) => column.name));
         
-        if (!columnExists) {
-            // 如果列不存在，添加新列
+        if (!columnNames.has('server_map_mission_path')) {
             await db.run("ALTER TABLE server_config_file ADD COLUMN server_map_mission_path TEXT", (err) => {
                 if (err) console.error("Error adding new column:", err);
                 else console.log("New column added successfully.");
             });
         }
+
+        if (!columnNames.has('mod_mount_mode')) {
+            await db.run("ALTER TABLE server_config_file ADD COLUMN mod_mount_mode TEXT DEFAULT 'copy'", (err) => {
+                if (err) console.error("Error adding mod_mount_mode column:", err);
+                else console.log("mod_mount_mode column added successfully.");
+            });
+        }
+
+        if (!columnNames.has('config_status')) {
+            await db.run("ALTER TABLE server_config_file ADD COLUMN config_status TEXT DEFAULT 'draft'", (err) => {
+                if (err) console.error("Error adding config_status column:", err);
+                else console.log("config_status column added successfully.");
+            });
+        }
+
+        if (!columnNames.has('source_preset_file_path')) {
+            await db.run("ALTER TABLE server_config_file ADD COLUMN source_preset_file_path TEXT", (err) => {
+                if (err) console.error("Error adding source_preset_file_path column:", err);
+                else console.log("source_preset_file_path column added successfully.");
+            });
+        }
+
+        if (!columnNames.has('active_preset_file_path')) {
+            await db.run("ALTER TABLE server_config_file ADD COLUMN active_preset_file_path TEXT", (err) => {
+                if (err) console.error("Error adding active_preset_file_path column:", err);
+                else console.log("active_preset_file_path column added successfully.");
+            });
+        }
     });
     db.close();
 }
+
+setTimeout(() => {
+    update();
+});
 
 
 // 打开数据库

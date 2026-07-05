@@ -10,6 +10,11 @@ const TASK_MODE = {
     UPDATE: 'UPDATE'
 } as const;
 
+const MOD_MOUNT_MODE = {
+    COPY: 'copy',
+    JUNCTION: 'junction'
+} as const;
+
 const MOD_CONFIG_FOLDERS = [
     'types',
     'spawnabletypes',
@@ -20,9 +25,20 @@ const MOD_CONFIG_FOLDERS = [
     'map_missions'
 ] as const;
 
+const CE_CONFIG_TYPES = [
+    'types',
+    'spawnabletypes',
+    'globals',
+    'economy',
+    'events',
+    'messages'
+] as const;
+
 export {
     CREATED_CONFIG_FOLDER_NAME,
     MOD_FOLDER_NAME,
     TASK_MODE,
-    MOD_CONFIG_FOLDERS
+    MOD_MOUNT_MODE,
+    MOD_CONFIG_FOLDERS,
+    CE_CONFIG_TYPES
 };

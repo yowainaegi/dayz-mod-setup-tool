@@ -1,7 +1,8 @@
 <template>
   <div id="ConfigFileEdit" class="view-wrap">
-    <div class="view-content">
-      <a-form :model="configFileForm" :label-col="{ span: formLabelSpan }" :rules="rules" @finish="save">
+    <div class="view-content config-file-edit-content">
+      <a-form class="config-file-edit-form" :model="configFileForm" :label-col="{ span: formLabelSpan }" :rules="rules" @finish="save">
+        <div class="config-file-edit-fields">
         <a-form-item :label="$t('ConfigFileEditView.form.fields.serverName')" name="server_name">
           <a-input v-model:value="configFileForm.server_name" @blur="syncDerivedFields" />
         </a-form-item>
@@ -29,8 +30,8 @@
         <a-form-item :label="$t('ConfigFileEditView.form.fields.presetFileName')" name="preset_file_name">
           <a-select v-model:value="configFileForm.preset_file_name" :options="presetFileNameList">
             <template #suffixIcon>
-              <FluentIcon v-if="presetFileNameListLoading" name="spinner" color="white" spin />
-              <FluentIcon v-else name="chevron-down" color="white" />
+              <FluentIcon v-if="presetFileNameListLoading" name="spinner" color="var(--app-color-text-heading)" spin />
+              <FluentIcon v-else name="chevron-down" color="var(--app-color-text-heading)" />
             </template>
           </a-select>
         </a-form-item>
@@ -39,17 +40,29 @@
           <a-input v-model:value="configFileForm.server_profile_folder" @blur="syncDerivedFields" />
         </a-form-item>
 
-        <div class="footer-content">
+        <a-form-item :label="$t('ConfigFileEditView.modMountMode')" name="mod_mount_mode">
+          <a-select v-model:value="configFileForm.mod_mount_mode" :options="modMountModeOptions" />
+        </a-form-item>
+
+        <a-form-item v-if="mode === 'edit'" :label="$t('ConfigFileEditView.status')">
+          <div class="config-status-row">
+            <span :class="['config-status-value', currentConfigStatus]">{{ currentConfigStatusLabel }}</span>
+            <a-button @click="resetConfigStatus">{{ $t('ConfigFileEditView.resetStatus') }}</a-button>
+          </div>
+        </a-form-item>
+        </div>
+
+        <FixedFooterActions>
           <a-button @click="back">{{ $t('ConfigFileEditView.back') }}</a-button>
           <a-button html-type="submit" type="primary">{{ $t('ConfigFileEditView.save') }}</a-button>
-        </div>
+        </FixedFooterActions>
       </a-form>
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, type Ref } from 'vue';
+import { computed, ref, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import type { Rule } from 'ant-design-vue/es/form';
@@ -57,10 +70,12 @@ import { message, type SelectProps } from 'ant-design-vue';
 import { i18n } from '@/i18n';
 import FluentIcon from '@/components/common/FluentIcon/index.vue';
 import ConfigFile from '@/server/models/ServerConfigFile';
-import { containsSpecialCharacters, pureServerFolderPathValidate, serverFolderPathValidate } from '@/server/validation/ConfigFileEditValidate';
-import { addConfigFile, getConfigFileById, getPresetFileFolderPath, getPresetFileNameList, getWindowsUserName, updateConfigFile } from '@/server/api/ConfigFileEditApi';
+import { containsSpecialCharacters, pureServerFolderPathValidate } from '@/server/validation/ConfigFileEditValidate';
+import { addConfigFile, getConfigFileById, getPresetFileFolderPath, getPresetFileNameList, getWindowsUserName, updateConfigFile, updateConfigStatus } from '@/server/api/ConfigFileEditApi';
 import { getDateId } from '@/utils/Util';
 import { getPathSep } from '@/utils/OsUtils';
+import { MOD_MOUNT_MODE } from '@/services/modSetup/constants';
+import FixedFooterActions from '@/components/common/FixedFooterActions/index.vue';
 
 const DEFAULT_PROFILE_FOLDER = 'profiles';
 
@@ -70,9 +85,21 @@ const mode = store.state.configFileEditViewMode;
 const formLabelSpan = ref(4);
 const presetFileNameListLoading: Ref<boolean> = ref(false);
 const presetFileNameList: Ref<SelectProps['options']> = ref([]);
+const originalServerFolderPath: Ref<string | null> = ref(null);
+const modMountModeOptions: SelectProps['options'] = [
+  {
+    value: MOD_MOUNT_MODE.COPY,
+    label: i18n.global.t('ConfigFileEditView.modMountModeOptions.copy'),
+  },
+  {
+    value: MOD_MOUNT_MODE.JUNCTION,
+    label: i18n.global.t('ConfigFileEditView.modMountModeOptions.junction'),
+  },
+];
 
 const serverIdPK = mode === 'edit' ? Number(store.state.eidtConfigFileId) : null;
 const serverIdDate = mode === 'create' ? getDateId() : null;
+type ConfigStatus = NonNullable<ConfigFile['config_status']>;
 
 const configFileForm = ref<ConfigFile>({
   id: serverIdPK,
@@ -85,6 +112,10 @@ const configFileForm = ref<ConfigFile>({
   preset_file_name: null,
   server_profile_folder: DEFAULT_PROFILE_FOLDER,
   server_map_mission_path: null,
+  mod_mount_mode: MOD_MOUNT_MODE.COPY,
+  config_status: 'draft',
+  source_preset_file_path: null,
+  active_preset_file_path: null,
 });
 
 const rules: Record<string, Rule[]> = {
@@ -108,12 +139,15 @@ const rules: Record<string, Rule[]> = {
     { required: true, type: 'string', message: i18n.global.t('ConfigFileEditView.form.validates.required.serverFolderPath'), trigger: 'blur' },
     {
       message: i18n.global.t('ConfigFileEditView.form.validates.correctly.serverFolderPath'),
-      validator: serverFolderPathValidate.bind(this),
+      validator: validateServerFolderPath,
       trigger: 'blur',
     },
   ],
   deploy_server_folder_path: [
     { required: true, type: 'string', message: i18n.global.t('ConfigFileEditView.form.validates.required.deployServerFolderPath'), trigger: 'blur' },
+  ],
+  preset_file_name: [
+    { required: true, type: 'string', message: i18n.global.t('ConfigFileEditView.form.validates.required.presetFileName'), trigger: 'change' },
   ],
   server_profile_folder: [
     { required: true, type: 'string', message: i18n.global.t('ConfigFileEditView.form.validates.required.serverProfileFolder'), trigger: 'blur' },
@@ -124,6 +158,9 @@ const rules: Record<string, Rule[]> = {
     },
   ],
 };
+
+const currentConfigStatus = computed<ConfigStatus>(() => configFileForm.value.config_status || 'draft');
+const currentConfigStatusLabel = computed(() => i18n.global.t(`common.configStatus.${currentConfigStatus.value}`));
 
 store.commit('updatePageTitle', i18n.global.t('ConfigFileEditView.pageTitle'));
 
@@ -147,6 +184,33 @@ function syncDerivedFields(): void {
 function fillDefaultDeployPath(): void {
   if (!configFileForm.value.deploy_server_folder_path && configFileForm.value.server_folder_path) {
     configFileForm.value.deploy_server_folder_path = configFileForm.value.server_folder_path;
+  }
+}
+
+function normalizePath(path: string | null | undefined): string {
+  return (path || '').replace(/\\/g, '/').replace(/\/+$/g, '').toLowerCase();
+}
+
+function canReuseExistingWorkspacePath(value: string): boolean {
+  const status = configFileForm.value.config_status || 'draft';
+  return mode === 'edit'
+    && status !== 'draft'
+    && normalizePath(value) === normalizePath(originalServerFolderPath.value);
+}
+
+async function validateServerFolderPath(_rule: Rule, value: string): Promise<void> {
+  if (!value) {
+    throw new Error('pathCleanValidate function path is required');
+  }
+
+  if (canReuseExistingWorkspacePath(value)) {
+    await window.ipcRenderer.invoke('serverAPI', 'pathValidate', value);
+    return;
+  }
+
+  const res = await window.ipcRenderer.invoke('serverAPI', 'pathCleanValidate', value);
+  if (res.data === false) {
+    throw new Error('the folder is not empty');
   }
 }
 
@@ -185,6 +249,8 @@ async function loadConfigFile(): Promise<void> {
   }
 
   configFileForm.value = await getConfigFileById(configFileForm.value.id);
+  configFileForm.value.mod_mount_mode = configFileForm.value.mod_mount_mode || MOD_MOUNT_MODE.COPY;
+  originalServerFolderPath.value = configFileForm.value.server_folder_path;
   syncDerivedFields();
 }
 
@@ -199,8 +265,20 @@ function back(): void {
   router.push('/ConfigFileList');
 }
 
+async function resetConfigStatus(): Promise<void> {
+  if (mode !== 'edit' || configFileForm.value.id === null) {
+    return;
+  }
+
+  await updateConfigStatus(configFileForm.value.id, 'draft');
+  configFileForm.value.config_status = 'draft';
+  message.success(i18n.global.t('ConfigFileEditView.statusResetSuccess'));
+}
+
 async function save(): Promise<void> {
   syncDerivedFields();
+  configFileForm.value.source_preset_file_path = configFileForm.value.preset_file_name;
+  configFileForm.value.config_status = configFileForm.value.config_status || 'draft';
 
   if (mode === 'create') {
     await addConfigFile(configFileForm.value);
@@ -214,3 +292,62 @@ async function save(): Promise<void> {
 
 init();
 </script>
+
+<style scoped lang="less">
+#ConfigFileEdit {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.config-file-edit-content,
+.config-file-edit-form {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.config-file-edit-fields {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.config-status-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.config-status-value {
+  display: inline-flex;
+  height: 20px;
+  align-items: center;
+  padding: 0 6px;
+  border: 1px solid var(--app-color-border-secondary);
+  background: var(--app-color-hover-bg);
+  color: var(--app-color-text);
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.config-status-value.workspace_ready {
+  border-color: var(--app-color-link);
+  color: var(--app-color-link);
+}
+
+.config-status-value.server_created {
+  border-color: var(--app-color-success);
+  color: var(--app-color-success);
+}
+
+.config-status-value.ce_mounted {
+  border-color: var(--app-color-primary);
+  color: var(--app-color-primary);
+}
+</style>

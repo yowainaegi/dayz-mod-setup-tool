@@ -1,5 +1,6 @@
 import { getConfigFileNameList } from "@/server/api/ModMountConfigApi";
-import { NormalConfigFolder } from "./types";
+import { CREATED_CONFIG_FOLDER_NAME } from "./constants";
+import { ModCeMountItem, NormalConfigFolder } from "./types";
 
 function isXmlFile(fileName: string): boolean {
     return fileName.toLowerCase().endsWith('.xml');
@@ -71,6 +72,44 @@ async function appendConfigFoldersToEconomyCore(economyCoreContent: any, configF
     }
 }
 
+function appendMountItemsToEconomyCore(economyCoreContent: any, mountItems: ModCeMountItem[]): void {
+    if (!economyCoreContent.economycore.ce) {
+        economyCoreContent.economycore.ce = [];
+    }
+
+    const existingCeRefs = collectExistingCeRefs(economyCoreContent.economycore.ce);
+    const ceItemsByFolder = new Map<string, { $: { folder: string }; file: any[] }>();
+
+    for (const mountItem of mountItems) {
+        const ceFolder = `${CREATED_CONFIG_FOLDER_NAME}/${mountItem.modFolderName}/${mountItem.selectedType}`;
+        const ceRefKey = buildCeRefKey(ceFolder, mountItem.fileName, mountItem.selectedType);
+        if (existingCeRefs.has(ceRefKey)) {
+            continue;
+        }
+
+        let ceItem = ceItemsByFolder.get(ceFolder);
+        if (!ceItem) {
+            ceItem = {
+                $: { folder: ceFolder },
+                file: []
+            };
+            ceItemsByFolder.set(ceFolder, ceItem);
+        }
+
+        ceItem.file.push({
+            $: { name: mountItem.fileName, type: mountItem.selectedType }
+        });
+        existingCeRefs.add(ceRefKey);
+    }
+
+    for (const ceItem of ceItemsByFolder.values()) {
+        if (ceItem.file.length > 0) {
+            economyCoreContent.economycore.ce.push(ceItem);
+        }
+    }
+}
+
 export {
-    appendConfigFoldersToEconomyCore
+    appendConfigFoldersToEconomyCore,
+    appendMountItemsToEconomyCore
 };
