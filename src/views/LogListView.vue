@@ -2,10 +2,11 @@
   <div id="LogList" class="view-wrap">
     <div class="view-content">
       <a-table
+        class="log-table"
         :data-source="dataSource"
         :columns="columns"
         :pagination="false"
-        :scroll="{y: 500}"
+        :scroll="{ y: '100%' }"
         :expandable="{ expandedRowRender: renderExpandedLog }"
       >
         <template #bodyCell="{ column, text }">
@@ -128,7 +129,45 @@ function back() {
   flex: 1;
   min-height: 0;
   width: 100%;
-  overflow: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.log-table {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.log-table :deep(.ant-spin-nested-loading),
+.log-table :deep(.ant-spin-container),
+.log-table :deep(.ant-table),
+.log-table :deep(.ant-table-container) {
+  height: 100%;
+  min-height: 0;
+}
+
+.log-table :deep(.ant-spin-container),
+.log-table :deep(.ant-table),
+.log-table :deep(.ant-table-container) {
+  display: flex;
+  flex-direction: column;
+}
+
+.log-table :deep(.ant-table-container) {
+  flex: 1;
+}
+
+.log-table :deep(.ant-table-header) {
+  flex: 0 0 auto;
+}
+
+.log-table :deep(.ant-table-body) {
+  flex: 1;
+  min-height: 0;
+  max-height: none !important;
+  overflow-y: auto !important;
 }
 
 .log-type-error {
