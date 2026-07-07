@@ -1,5 +1,6 @@
 import { IPCMAIN_ERROR_PREFIX } from "@/server/models/Constant";
 import ResData from "@/server/models/ResData";
+import { normalizeError } from "@/server/errors/normalizeError";
 
 /**
  * 获取UUID
@@ -52,5 +53,8 @@ export function deepClone(obj: any): any {
  * 转换成ipcmain的错误信息
  */
 export function jsonStringfyToIPCMAINError(errRes: ResData): string {
+    if (!errRes.error && errRes.statusCode !== null && errRes.statusCode !== '200') {
+        errRes.error = normalizeError(errRes.data, 'ipcMain');
+    }
     return `${IPCMAIN_ERROR_PREFIX}${JSON.stringify(errRes)}`;
 }

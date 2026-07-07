@@ -171,14 +171,15 @@ onMounted(async () => {
   padding: 10px 22px 10px 48px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  overflow: hidden;
+  justify-content: flex-start;
+  overflow-y: auto;
 
   p {
     margin: 0;
     line-height: 1.7;
     color: var(--app-color-text);
-    word-break: break-word;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
   }
 }
 

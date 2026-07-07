@@ -22,41 +22,35 @@
           {{ currentLangText }}
         </a-button>
       </a-dropdown>
-      
+
       <a-divider orientation="left" class="divider">{{ $t('SettingsView.RelatedPaths.title') }}</a-divider>
 
-      <a-form :model="reloatedPath"  :wrapper-col="{span: 24}">
+      <a-form :model="reloatedPath" :wrapper-col="{ span: 24 }">
         <a-form-item :label="$t('SettingsView.RelatedPaths.osUserName')">
           <label>{{ reloatedPath.osUserName.value }}</label>
         </a-form-item>
 
         <a-form-item :label="$t('SettingsView.RelatedPaths.dayZLauncherFolderPath')">
-          <label>{{ reloatedPath.dayZLauncherFolderPath.value }}</label>
+          <div class="path-value-row">
+            <span class="path-text">{{ reloatedPath.dayZLauncherFolderPath.value }}</span>
+            <span v-if="pathCheckStatus.dayZLauncher !== 'success'" class="path-expected-tip">{{ $t('SettingsView.RelatedPaths.expectedPath') }}</span>
+            <PathStatus :status="pathCheckStatus.dayZLauncher" />
+          </div>
         </a-form-item>
 
         <a-form-item :label="$t('SettingsView.RelatedPaths.presetFileFolderPath')">
-          <label>{{ reloatedPath.presetFileFolderPath.value }}</label>
+          <div class="path-value-row">
+            <span class="path-text">{{ reloatedPath.presetFileFolderPath.value }}</span>
+            <span v-if="pathCheckStatus.preset !== 'success'" class="path-expected-tip">{{ $t('SettingsView.RelatedPaths.expectedPath') }}</span>
+            <PathStatus :status="pathCheckStatus.preset" />
+          </div>
         </a-form-item>
-        <a-form-item :label="$t('SettingsView.RelatedPaths.pathCheck')">
-          <label  v-if="checkPathStatus === 'success'">
-            <FluentIcon name="checkmark-circle" color="var(--app-color-success)" />
-            <span class="path-check-success">{{ $t('SettingsView.RelatedPaths.pathCheckSuccess') }}</span>
-          </label>
-          <label v-if="checkPathStatus === 'failed'" >
-            <FluentIcon name="dismiss-circle" color="var(--app-color-error)" />
-            <span class="path-check-failed">{{ $t('SettingsView.RelatedPaths.pathCheckFailed') }}</span>
-          </label>
-          <label v-if="checkPathStatus === 'checking'" >
-            <FluentIcon name="spinner" spin />
-            <span style="margin-left: 5px">{{ $t('SettingsView.RelatedPaths.pathChecking') }}</span>
-          </label>
-          <a-button type="primary" size="small" style="float: right" @click="checkPath">
-            {{ $t('SettingsView.RelatedPaths.recheck') }}
+
+        <div class="path-check-actions">
+          <a-button type="primary" size="small" :loading="isChecking" @click="checkPath">
+            {{ $t(hasChecked ? 'SettingsView.RelatedPaths.recheck' : 'SettingsView.RelatedPaths.check') }}
           </a-button>
-        </a-form-item>
-        <!-- <a-form-item :label="$t('SettingsView.RelatedPaths.workShopFolderPath')"  v-if="checkPathStatus === 'failed'">
-          <a-input size="small"/>
-        </a-form-item> -->
+        </div>
       </a-form>
     </div>
 
@@ -68,102 +62,111 @@
 </template>
 
 <script lang="ts" setup>
-import { i18n } from "@/i18n";
-import { useRouter } from "vue-router";
-import { useStore } from "vuex";
-import { APP_LANGUAGE } from "@/constants/AppConfig";
-import { getAppConfigByConfigName, updateAppConfigByConfigName } from "@/server/api/SettingsApi";
-import { getWindowsUserName, getDayZLauncherDataFolderPath, getPresetFileFolderPath } from "@/server/api/SettingsApi";
-import { Ref, ref } from 'vue';
+import { computed, defineComponent, h, Ref, ref } from 'vue';
+import { i18n } from '@/i18n';
+import { useRouter } from 'vue-router';
+import { useStore } from 'vuex';
+import { APP_LANGUAGE } from '@/constants/AppConfig';
+import {
+  buildDayZLauncherDataFolderPath,
+  buildDisplayDayZLauncherDataFolderPath,
+  buildDisplayPresetFileFolderPath,
+  buildPresetFileFolderPath,
+  checkDirectoryPath,
+  getAppConfigByConfigName,
+  getWindowsUserName,
+  updateAppConfigByConfigName,
+} from '@/server/api/SettingsApi';
 import AppConfig from '@/server/models/AppConfig';
-import FluentIcon from "@/components/common/FluentIcon/index.vue";
+import FluentIcon from '@/components/common/FluentIcon/index.vue';
 import FixedFooterActions from '@/components/common/FixedFooterActions/index.vue';
 
+type PathCheckStatus = 'idle' | 'checking' | 'success' | 'failed';
+type PathKey = 'dayZLauncher' | 'preset';
+
 interface ReloatedPath {
-  // 系统用户
   osUserName: Ref<string>,
-  // 预设文件夹路径
   presetFileFolderPath: Ref<string>,
-  // DayZ启动程序数据文件夹路径
   dayZLauncherFolderPath: Ref<string>
 }
 
-// router
 const router = useRouter();
-// store
 const store = useStore();
-// 当前语言
-let currentLang: string;
-// 当前语言文本
-let currentLangText = ref('');
-// 应用Loading
-let applyLoading: boolean = false;
-// 检查路径状态
-let checkPathStatus: Ref<string> = ref('checking');
-// 相关路径
-let reloatedPath: ReloatedPath = {
-  // 系统用户
+const currentLangText = ref('');
+const pathCheckStatus = ref<Record<PathKey, PathCheckStatus>>({
+  dayZLauncher: 'idle',
+  preset: 'idle',
+});
+const reloatedPath: ReloatedPath = {
   osUserName: ref(''),
-  // 预设文件夹路径
   presetFileFolderPath: ref(''),
-  // DayZ启动程序数据文件夹路径
   dayZLauncherFolderPath: ref('')
-}
-
-/**
- * 初始化
- */
- function init(): void {
-  let lang: string;
-  // 初始化语言
-  getAppConfigByConfigName(APP_LANGUAGE).then((res: AppConfig) => {
-    lang = res.config_value as string;
-    changeLange(lang);
-    store.commit('updatePageTitle', i18n.global.t('SettingsView.pageTitle'));
-  }).then(() => {
-    // 获取系统用户名
-    getWindowsUserName().then((osUserName: string) => {
-      reloatedPath.osUserName.value = osUserName;
-    }).then(() => {
-      // // 获取dayz启动器数据文件夹路径
-      // getDayZLauncherDataFolderPath(reloatedPath.osUserName.value).then((dayZLauncherFolderPath: string) => {
-      //   reloatedPath.dayZLauncherFolderPath.value = dayZLauncherFolderPath;
-      // }).catch(() => {
-      //   // 如果不能，需要手动指定文件夹路径
-      //   checkPathStatus.value = 'failed';
-      // });
-
-      // // 获取预设文件夹路径
-      // getPresetFileFolderPath(reloatedPath.osUserName.value).then((presetFileFolderPath: string) => {
-      //   reloatedPath.presetFileFolderPath.value = presetFileFolderPath;
-      // }).catch(() => {
-      //   // 如果不能，需要手动指定文件夹路径
-      //   checkPathStatus.value = 'failed';
-      // })
-
-
-
-      // 获取dayz启动器数据文件夹路径
-      // 获取预设文件夹路径
-      Promise.all([getDayZLauncherDataFolderPath(reloatedPath.osUserName.value), getPresetFileFolderPath(reloatedPath.osUserName.value)])
-      .then((results) => {
-        reloatedPath.dayZLauncherFolderPath.value = results[0];
-        reloatedPath.presetFileFolderPath.value = results[1];
-        // 如果都能正确获取上述路径，则路径检测成功
-        checkPathStatus.value = 'success';
-      })
-      .catch((error) => {
-        checkPathStatus.value = 'failed';
-        throw error;
-      });
-    })
-  })
 };
-// 执行初始化方法
+let currentLang = '';
+let applyLoading = false;
+
+const isChecking = computed(() => pathCheckStatus.value.dayZLauncher === 'checking' || pathCheckStatus.value.preset === 'checking');
+const hasChecked = computed(() => pathCheckStatus.value.dayZLauncher !== 'idle' || pathCheckStatus.value.preset !== 'idle');
+
+const PathStatus = defineComponent({
+  props: {
+    status: {
+      type: String,
+      required: true,
+    },
+  },
+  setup(props) {
+    return () => {
+      if (props.status === 'idle') {
+        return null;
+      }
+
+      if (props.status === 'checking') {
+        return h('span', { class: 'path-check-status' }, [
+          h(FluentIcon, { name: 'spinner', spin: true }),
+          h('span', i18n.global.t('SettingsView.RelatedPaths.pathChecking')),
+        ]);
+      }
+
+      if (props.status === 'success') {
+        return h('span', { class: 'path-check-status path-check-success' }, [
+          h(FluentIcon, { name: 'checkmark-circle', color: 'var(--app-color-success)' }),
+          h('span', i18n.global.t('SettingsView.RelatedPaths.pathCheckSuccess')),
+        ]);
+      }
+
+      return h('span', { class: 'path-check-status path-check-failed' }, [
+        h(FluentIcon, { name: 'dismiss-circle', color: 'var(--app-color-error)' }),
+        h('span', i18n.global.t('SettingsView.RelatedPaths.pathCheckFailed')),
+      ]);
+    };
+  },
+});
+
+function init(): void {
+  getAppConfigByConfigName(APP_LANGUAGE).then((res: AppConfig) => {
+    changeLange(res.config_value as string);
+    store.commit('updatePageTitle', i18n.global.t('SettingsView.pageTitle'));
+  });
+
+  getWindowsUserName().then((osUserName: string) => {
+    reloatedPath.osUserName.value = osUserName;
+    loadExpectedPaths();
+  });
+}
 init();
 
-// 切换语言
-function changeLange (lang: string): void {
+function loadExpectedPaths(): void {
+  Promise.all([
+    buildDisplayDayZLauncherDataFolderPath(),
+    buildDisplayPresetFileFolderPath(),
+  ]).then(([dayZLauncherPath, presetPath]) => {
+    reloatedPath.dayZLauncherFolderPath.value = dayZLauncherPath;
+    reloatedPath.presetFileFolderPath.value = presetPath;
+  });
+}
+
+function changeLange(lang: string): void {
   currentLang = lang;
   switch (lang) {
     case 'zh_CN':
@@ -180,28 +183,53 @@ function changeLange (lang: string): void {
   }
 }
 
-/**
- * 路径检查
- */
 function checkPath(): void {
-  init(); 
+  pathCheckStatus.value.dayZLauncher = 'checking';
+  pathCheckStatus.value.preset = 'checking';
+  const osUserNamePromise = reloatedPath.osUserName.value
+    ? Promise.resolve(reloatedPath.osUserName.value)
+    : getWindowsUserName();
+
+  osUserNamePromise.then((osUserName: string) => {
+    reloatedPath.osUserName.value = osUserName;
+    return Promise.all([
+      checkExpectedPath('dayZLauncher', buildDayZLauncherDataFolderPath(osUserName)),
+      checkExpectedPath('preset', buildPresetFileFolderPath(osUserName)),
+    ]);
+  }).catch(() => {
+    if (pathCheckStatus.value.dayZLauncher === 'checking') {
+      pathCheckStatus.value.dayZLauncher = 'failed';
+    }
+    if (pathCheckStatus.value.preset === 'checking') {
+      pathCheckStatus.value.preset = 'failed';
+    }
+  });
 }
 
-/**
- * 退出
- */
+async function checkExpectedPath(pathKey: PathKey, expectedPathPromise: Promise<string>): Promise<void> {
+  const expectedPath = await expectedPathPromise;
+  try {
+    const realPath = await checkDirectoryPath(expectedPath);
+    if (pathKey === 'dayZLauncher') {
+      reloatedPath.dayZLauncherFolderPath.value = realPath;
+    } else {
+      reloatedPath.presetFileFolderPath.value = realPath;
+    }
+    pathCheckStatus.value[pathKey] = 'success';
+  } catch {
+    pathCheckStatus.value[pathKey] = 'failed';
+  }
+}
+
 function quit(): void {
-  let routerHistory = store.state.routerHistory;
-  if(routerHistory.length === 0) {
+  const routerHistory = store.state.routerHistory;
+  if (routerHistory.length === 0) {
     router.push('/');
   } else {
     router.push(routerHistory[routerHistory.length - 1]);
   }
 }
 
-/**
- * 应用
- */
 function apply() {
   applyLoading = true;
   updateAppConfigByConfigName(APP_LANGUAGE, currentLang).then(() => {
@@ -231,9 +259,49 @@ function apply() {
   border-color: var(--app-color-primary);
 }
 
-.path-check-success,
-.path-check-failed {
-  margin-left: 5px;
+.path-value-row {
+  display: flex;
+  min-height: 24px;
+  align-items: center;
+  gap: 12px;
+}
+
+.path-value-row {
+  min-width: 0;
+}
+
+.path-check-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -8px;
+  margin-bottom: 16px;
+}
+
+.path-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.path-expected-tip {
+  flex: 0 0 auto;
+  color: var(--app-color-text-tertiary);
+  font-size: 12px;
+}
+
+.path-check-status {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  line-height: 24px;
+}
+
+.path-check-status :deep(.fluent-icon) {
+  flex: 0 0 auto;
+  line-height: 1;
 }
 
 .path-check-success {

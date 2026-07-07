@@ -7,6 +7,8 @@ import { pipeline } from "stream/promises";
 import ResData from "../models/ResData";
 import { STATUS_CODE } from "../models/Constant";
 import { jsonStringfyToIPCMAINError } from "@/utils/Util";
+import { normalizeError } from "@/server/errors/normalizeError";
+import { ERROR_CODES } from "@/server/errors/errorCodes";
 
 const handleFunctionsMap = new Map<string, Function>(Object.assign(osServiceHanleMethodMap));
 
@@ -39,7 +41,13 @@ ipcMain.handle('serverAPI', (_event, functionName: string, ...params: any) => {
         } else {
             const resData: ResData = {
                 statusCode: STATUS_CODE.API_ERROR,
-                data: 'function is undefined'
+                data: null,
+                error: {
+                    code: ERROR_CODES.API_FUNCTION_UNDEFINED,
+                    params: { functionName },
+                    rawMessage: `function is undefined: ${functionName}`,
+                    source: 'serverAPI'
+                }
             };
             reject(jsonStringfyToIPCMAINError(resData));
         }
@@ -183,9 +191,11 @@ function createSuccessResData(): ResData {
 }
 
 function createErrorResData(error: any): ResData {
+    const normalizedError = normalizeError(error, 'server.service');
     return {
         statusCode: STATUS_CODE.API_ERROR,
-        data: error?.message || error?.toString() || 'unknown error'
+        data: normalizedError.rawMessage || error?.message || error?.toString() || 'unknown error',
+        error: normalizedError
     };
 }
 

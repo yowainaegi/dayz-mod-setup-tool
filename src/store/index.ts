@@ -6,6 +6,7 @@ export default createStore({
     pageTitle: '',
     configFileEditViewMode: '',
     eidtConfigFileId: null,
+    copyConfigFileId: null,
     selectedConfigFile: null,
     sideAnimation: '',
     routerHistory: [],
@@ -38,6 +39,9 @@ export default createStore({
     },
     updateEditConfigFileId(state, eidtConfigFileId) {
         state.eidtConfigFileId = eidtConfigFileId;
+    },
+    updateCopyConfigFileId(state, copyConfigFileId) {
+        state.copyConfigFileId = copyConfigFileId;
     },
     updateSelectedConfigFile(state, selectedConfigFile) {
       state.selectedConfigFile = selectedConfigFile;

@@ -6,6 +6,9 @@ import ResData from "../models/ResData";
 import { app } from "electron";
 import { jsonStringfyToIPCMAINError } from "@/utils/Util";
 import { CE_CONFIG_TYPES, CREATED_CONFIG_FOLDER_NAME } from "@/services/modSetup/constants";
+import { normalizeError } from "@/server/errors/normalizeError";
+import { createAppError } from "@/server/errors/AppError";
+import { ERROR_CODES } from "@/server/errors/errorCodes";
 // import puppeteer from "puppeteer";
 
 
@@ -156,6 +159,19 @@ interface PresetSourceInfo {
     updatedAt: string;
 }
 
+function createApiErrorResData(error: any, source: string): ResData {
+    const normalizedError = normalizeError(error, source);
+    return {
+        statusCode: STATUS_CODE.API_ERROR,
+        data: normalizedError.rawMessage || error?.message || error?.toString?.() || String(error ?? ''),
+        error: normalizedError
+    };
+}
+
+function rejectApiError(reject: (reason?: any) => void, error: any, source: string): void {
+    reject(jsonStringfyToIPCMAINError(createApiErrorResData(error, source)));
+}
+
 /**
  * 获取系统分隔符
  */
@@ -168,11 +184,7 @@ const getPathSep = (): Promise<string> => {
             }
             resolve(JSON.stringify(resData));
         } catch (error: any) {
-            const resData: ResData = {
-                statusCode: STATUS_CODE.API_ERROR,
-                data: error.message
-            }
-           reject(jsonStringfyToIPCMAINError(resData));
+           rejectApiError(reject, error, 'OsService.getPathSep');
         }
     });
 }
@@ -189,11 +201,7 @@ const  getOsUserName = (): Promise<string> => {
             }
             resolve(JSON.stringify(resData));
         } catch (error: any) {
-            const resData: ResData = {
-                statusCode: STATUS_CODE.API_ERROR,
-                data: error.message
-            }
-           reject(jsonStringfyToIPCMAINError(resData));
+           rejectApiError(reject, error, 'OsService.getOsUserName');
         }
     });
 }
@@ -209,9 +217,7 @@ const getDirectoryPath = (path: string): Promise<string> => {
         }
         fs.opendir(path, (err: any, dir: any) => {
             if (err) {
-                resData.statusCode = STATUS_CODE.API_ERROR;
-                resData.data = err.message;
-               reject(jsonStringfyToIPCMAINError(resData));
+               rejectApiError(reject, err, 'OsService.getDirectoryPath');
             } else {
                 resData.statusCode = STATUS_CODE.SUCCESS;
                 resData.data = dir.path;
@@ -239,9 +245,7 @@ const getFileNameList = (path: string): Promise<string> => {
 
         fs.readdir(path, {encoding: 'utf-8', withFileTypes: true, recursive: false}, (err: any, files: any[]) => {
             if (err) {
-                resData.statusCode = STATUS_CODE.API_ERROR;
-                resData.data = err.message;
-               reject(jsonStringfyToIPCMAINError(resData));
+               rejectApiError(reject, err, 'OsService.getFileNameList');
             } else {
                 resData.statusCode = STATUS_CODE.SUCCESS;
                 resData.data = files;
@@ -263,9 +267,7 @@ const getFileContent = (path: string): Promise<string> => {
 
         fs.readFile(path, {encoding: 'utf-8'}, (err: any, data: string) => {
             if (err) {
-                resData.statusCode = STATUS_CODE.API_ERROR;
-                resData.data = err.message;
-               reject(jsonStringfyToIPCMAINError(resData));
+               rejectApiError(reject, err, 'OsService.getFileContent');
             } else {
                 resData.statusCode = STATUS_CODE.SUCCESS;
                 resData.data = data;
@@ -1223,7 +1225,10 @@ const prepareServerConfigWorkspace = (
                 throw new Error('serverFolderPath is empty');
             }
             if (!sourcePresetPath || !fs.existsSync(sourcePresetPath)) {
-                throw new Error(`source preset does not exist: ${sourcePresetPath}`);
+                throw createAppError(ERROR_CODES.SOURCE_PRESET_NOT_FOUND, { path: sourcePresetPath }, {
+                    rawMessage: `source preset does not exist: ${sourcePresetPath}`,
+                    source: 'OsService.prepareServerConfigWorkspace'
+                });
             }
 
             const presetWorkspaceFolderPath = getPresetWorkspaceFolderPath(serverFolderPath);
@@ -1267,9 +1272,7 @@ const prepareServerConfigWorkspace = (
             };
             resolve(JSON.stringify(resData));
         } catch (error: any) {
-            resData.statusCode = STATUS_CODE.API_ERROR;
-            resData.data = error.message;
-            reject(jsonStringfyToIPCMAINError(resData));
+            rejectApiError(reject, error, 'OsService.prepareServerConfigWorkspace');
         }
     });
 }
@@ -1358,7 +1361,10 @@ const markServerConfigWorkspacePresetSource = (serverFolderPath: string, sourceP
                 throw new Error('serverFolderPath is empty');
             }
             if (!sourcePresetPath || !fs.existsSync(sourcePresetPath)) {
-                throw new Error(`source preset does not exist: ${sourcePresetPath}`);
+                throw createAppError(ERROR_CODES.SOURCE_PRESET_NOT_FOUND, { path: sourcePresetPath }, {
+                    rawMessage: `source preset does not exist: ${sourcePresetPath}`,
+                    source: 'OsService.markServerConfigWorkspacePresetSource'
+                });
             }
 
             const activePresetPath = getActivePresetPath(serverFolderPath);
@@ -1374,9 +1380,7 @@ const markServerConfigWorkspacePresetSource = (serverFolderPath: string, sourceP
             };
             resolve(JSON.stringify(resData));
         } catch (error: any) {
-            resData.statusCode = STATUS_CODE.API_ERROR;
-            resData.data = error.message;
-            reject(jsonStringfyToIPCMAINError(resData));
+            rejectApiError(reject, error, 'OsService.markServerConfigWorkspacePresetSource');
         }
     });
 }

@@ -347,7 +347,7 @@ async function removeToSubscribedList(event: Event, record: ModInfo) {
     const confirmed = await confirmNativeDialog({
       title: i18n.global.t('ModChooseView.removeExistingModConfirmTitle'),
       message: i18n.global.t('ModChooseView.removeExistingModConfirmMessage', {
-        modName: record.DisplayName,
+        modName: formatRemoveConfirmModName(record.DisplayName),
       }),
       confirmText: i18n.global.t('common.modal.confirm.yes'),
       cancelText: i18n.global.t('common.modal.confirm.cancel'),
@@ -395,6 +395,35 @@ function normalizeModId(id: string | number | null | undefined): string | null {
   }
 
   return idText.startsWith('steam:') ? idText.substring('steam:'.length) : idText;
+}
+
+function formatDialogModName(name: string): string {
+  const normalizedName = name.trim();
+  if (normalizedName.length <= 72) {
+    return `\n${normalizedName}\n`;
+  }
+
+  return `\n${normalizedName.substring(0, 69)}...\n`;
+}
+
+function formatInlineDialogModName(name: string): string {
+  const normalizedName = name.trim();
+  if (normalizedName.length <= 72) {
+    return normalizedName;
+  }
+
+  return `${normalizedName.substring(0, 69)}...`;
+}
+
+function getCurrentLocale(): string {
+  const locale = i18n.global.locale;
+  return typeof locale === 'string' ? locale : locale.value;
+}
+
+function formatRemoveConfirmModName(name: string): string {
+  return ['en_US', 'ja_JP', 'zh_CN'].includes(getCurrentLocale())
+    ? formatInlineDialogModName(name)
+    : formatDialogModName(name);
 }
 
 function getDependencyIds(mod: ModInfo): string[] {

@@ -46,6 +46,25 @@ export default {
         },
         validates: {
             containsSpecialCharacters: 'can not contains special letters'
+        },
+        errors: {
+            UNKNOWN: 'An unknown error occurred. Please open the log for details.',
+            API_FUNCTION_UNDEFINED: 'Internal function is not available: {functionName}',
+            ILLEGAL_IPC_CHANNEL: 'Internal communication channel is not allowed: {channel}',
+            PATH_NOT_FOUND: 'Path does not exist: {path}',
+            PATH_PERMISSION_DENIED: 'No permission to access this path: {path}',
+            PATH_ALREADY_EXISTS: 'File or folder already exists: {path}',
+            PATH_BUSY: 'File or folder is being used by another program: {path}',
+            DIRECTORY_NOT_EMPTY: 'Folder is not empty: {path}',
+            PATH_INVALID: 'Path is invalid: {path}',
+            FILE_SYSTEM_ERROR: 'File system operation failed. Please open the log for details.',
+            DATABASE_OPERATION_FAILED: 'Database operation failed. Please open the log for details.',
+            SERVER_FOLDER_EMPTY: 'Server folder path is empty.',
+            SOURCE_PRESET_NOT_FOUND: 'Source preset file does not exist: {path}',
+            ACTIVE_PRESET_NOT_FOUND: 'Active preset file does not exist: {path}',
+            MISSION_FOLDER_INVALID: 'Mission folder is invalid: {path}',
+            UNSUPPORTED_CE_TYPE: 'Unsupported CE type: {type}',
+            XML_ROOT_MISMATCH: 'XML root must be <{expected}> to save into {target}.'
         }
     },
     components: {
@@ -71,6 +90,7 @@ export default {
         back: 'Back',
         dropDown: {
             edit: 'Edit',
+            copy: 'Copy',
             delete: 'Delete'
         },
         deleteConfirm: 'Are you sure to delete this config file ?',
@@ -154,7 +174,7 @@ export default {
         dependencyMissingUnavailable: '{modName} requires these dependency mods, but they are not in the current subscribed list:\n{dependencies}',
         dependencyRemoveBlocked: 'Cannot remove {modName}. These added mods depend on it:\n{dependents}',
         removeExistingModConfirmTitle: 'Remove deployed mod?',
-        removeExistingModConfirmMessage: 'Removing {modName} during update will delete its server mod folder and clean tool-managed CE/mission references. You still need to check and remove related manual configuration. Continue?'
+        removeExistingModConfirmMessage: 'Remove {modName}?\nThe server mod folder and tool-managed CE/mission references will be removed.\nCheck manual config yourself.'
     },
     EditServerView: {
         next: 'Next',
@@ -333,8 +353,10 @@ export default {
             pathCheck: 'Path Check',
             pathCheckSuccess: 'Path Check Success',
             pathChecking: 'Path Checking',
+            check: 'Check',
             recheck: 'Re-Check',
             pathCheckFailed: 'Path Check Failed',
+            expectedPath: 'Expected path',
             workShopFolderPath: '!WorkShop Folder Path',
         },
         apply: 'Apply',

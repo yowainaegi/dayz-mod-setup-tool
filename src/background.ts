@@ -74,18 +74,36 @@ const textFileEditorWindowSize = {
   minHeight: 460,
 } as const;
 
-function disableBrowserHistoryNavigation(browserWindow: BrowserWindow) {
+function disableBrowserShortcuts(browserWindow: BrowserWindow) {
   browserWindow.on('app-command', (event, command) => {
     if (command === 'browser-backward' || command === 'browser-forward') {
       event.preventDefault();
     }
   });
 
+  browserWindow.on('enter-full-screen', () => {
+    if (!browserWindow.isDestroyed()) {
+      browserWindow.setFullScreen(false);
+    }
+  });
+
+  browserWindow.webContents.on('zoom-changed', (event) => {
+    event.preventDefault();
+    browserWindow.webContents.setZoomFactor(1);
+  });
+
+  browserWindow.webContents.setVisualZoomLevelLimits(1, 1).catch(() => undefined);
+
   browserWindow.webContents.on('before-input-event', (event, input) => {
     const isBrowserHistoryKey = input.key === 'BrowserBack' || input.key === 'BrowserForward';
     const isAltArrowHistory = input.alt && ['ArrowLeft', 'ArrowRight', 'Left', 'Right'].includes(input.key);
+    const normalizedKey = input.key.toLowerCase();
+    const isFullScreenKey = input.key === 'F11';
+    const isZoomKey = input.control
+      && !input.alt
+      && ['+', '=', '-', '_', '0', 'numadd', 'numsub', 'numpadadd', 'numpadsubtract', 'add', 'subtract'].includes(normalizedKey);
 
-    if (isBrowserHistoryKey || isAltArrowHistory) {
+    if (isBrowserHistoryKey || isAltArrowHistory || isFullScreenKey || isZoomKey) {
       event.preventDefault();
     }
   });
@@ -103,13 +121,14 @@ async function createWindow() {
     thickFrame: true,
     minWidth: mainWindowSize.minWidth,
     minHeight: mainWindowSize.minHeight,
+    fullscreenable: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, "../preload/preload.js")
     },
   });
-  disableBrowserHistoryNavigation(win);
+  disableBrowserShortcuts(win);
 
   if (process.env.ELECTRON_RENDERER_URL) {
     // Load the url of the dev server if in development mode
@@ -251,6 +270,8 @@ ipcMain.handle('showNativeDialog', async (_event, options: AppDialogOptions): Pr
     const dialogWindow = new BrowserWindow({
       width: dialogWidth,
       height: dialogHeight,
+      minWidth: dialogWindowSize.width,
+      minHeight: dialogWindowSize.height,
       x: dialogPosition?.x,
       y: dialogPosition?.y,
       parent: parentWindow,
@@ -259,9 +280,9 @@ ipcMain.handle('showNativeDialog', async (_event, options: AppDialogOptions): Pr
       frame: false,
       hasShadow: true,
       thickFrame: true,
-      resizable: false,
+      resizable: true,
       minimizable: false,
-      maximizable: false,
+      maximizable: true,
       fullscreenable: false,
       backgroundColor: appThemeTokens.colorBgContent,
       title: dialogOptions.title,
@@ -271,7 +292,7 @@ ipcMain.handle('showNativeDialog', async (_event, options: AppDialogOptions): Pr
         preload: path.join(__dirname, "../preload/preload.js")
       },
     });
-    disableBrowserHistoryNavigation(dialogWindow);
+    disableBrowserShortcuts(dialogWindow);
 
     let resolved = false;
     const webContentsId = dialogWindow.webContents.id;
@@ -417,7 +438,7 @@ ipcMain.handle('showTextFilePreview', async (
       preload: path.join(__dirname, "../preload/preload.js")
     },
   });
-  disableBrowserHistoryNavigation(previewWindow);
+  disableBrowserShortcuts(previewWindow);
 
   const webContentsId = previewWindow.webContents.id;
   textFilePreviewByWebContentsId.set(webContentsId, await readTextFilePreviewData(filePath, title, {
@@ -506,7 +527,7 @@ ipcMain.handle('showTextFileEditor', async (
       preload: path.join(__dirname, "../preload/preload.js")
     },
   });
-  disableBrowserHistoryNavigation(editorWindow);
+  disableBrowserShortcuts(editorWindow);
 
   const webContentsId = editorWindow.webContents.id;
   textFileEditorByWebContentsId.set(webContentsId, await readTextFilePreviewData(filePath, title, {

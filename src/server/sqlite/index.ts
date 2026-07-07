@@ -5,6 +5,7 @@ import sqlite3Obj from "sqlite3";
 import ResData from "@/server/models/ResData";
 import { STATUS_CODE } from "@/server/models/Constant";
 import { app } from "electron";
+import { normalizeDatabaseError } from "@/server/errors/normalizeError";
 const sqlite3 = sqlite3Obj.verbose();
 
 
@@ -117,6 +118,7 @@ ipcMain.handle('sqlite3Execute', (_event, type, sql, params): Promise<string> =>
                 if(err) {
                     resData.statusCode = STATUS_CODE.DATABASE_ERROR;
                     resData.data = err.message;
+                    resData.error = normalizeDatabaseError(err, 'sqlite3Execute.list');
                     reject(JSON.stringify(resData));
                 } else {
                     resData.statusCode = STATUS_CODE.SUCCESS;
@@ -132,6 +134,7 @@ ipcMain.handle('sqlite3Execute', (_event, type, sql, params): Promise<string> =>
                 if(err) {
                     resData.statusCode = STATUS_CODE.DATABASE_ERROR;
                     resData.data = err.message;
+                    resData.error = normalizeDatabaseError(err, 'sqlite3Execute.single');
                     reject(JSON.stringify(resData));
                 } else {
                     resData.statusCode = STATUS_CODE.SUCCESS;
@@ -147,6 +150,7 @@ ipcMain.handle('sqlite3Execute', (_event, type, sql, params): Promise<string> =>
                 if(err) {
                     resData.statusCode = STATUS_CODE.DATABASE_ERROR;
                     resData.data = err.message;
+                    resData.error = normalizeDatabaseError(err, 'sqlite3Execute.edit');
                     reject(JSON.stringify(resData));
                 } else {
                     resData.statusCode = STATUS_CODE.SUCCESS;

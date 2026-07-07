@@ -99,6 +99,9 @@ const modMountModeOptions: SelectProps['options'] = [
 
 const serverIdPK = mode === 'edit' ? Number(store.state.eidtConfigFileId) : null;
 const serverIdDate = mode === 'create' ? getDateId() : null;
+const copySourceConfigFileId = mode === 'create' && store.state.copyConfigFileId
+  ? Number(store.state.copyConfigFileId)
+  : null;
 type ConfigStatus = NonNullable<ConfigFile['config_status']>;
 
 const configFileForm = ref<ConfigFile>({
@@ -237,18 +240,31 @@ async function loadPresetOptions(): Promise<void> {
 }
 
 async function loadConfigFile(): Promise<void> {
-  if (mode !== 'edit') {
+  if (mode !== 'edit' && copySourceConfigFileId === null) {
     return;
   }
 
-  if (configFileForm.value.id === null) {
+  if (mode === 'edit' && configFileForm.value.id === null) {
     throw new Error('required param configFileForm.id');
   }
 
-  configFileForm.value = await getConfigFileById(configFileForm.value.id);
+  const loadedConfigFile = await getConfigFileById(mode === 'edit' ? configFileForm.value.id as number : copySourceConfigFileId as number);
+  configFileForm.value = mode === 'edit' ? loadedConfigFile : buildCopiedConfigFile(loadedConfigFile);
   configFileForm.value.mod_mount_mode = configFileForm.value.mod_mount_mode || MOD_MOUNT_MODE.COPY;
   originalServerFolderPath.value = configFileForm.value.server_folder_path;
   syncDerivedFields();
+}
+
+function buildCopiedConfigFile(sourceConfigFile: ConfigFile): ConfigFile {
+  return {
+    ...sourceConfigFile,
+    id: null,
+    server_id: serverIdDate,
+    config_status: 'draft',
+    source_preset_file_path: sourceConfigFile.preset_file_name || null,
+    active_preset_file_path: null,
+    pending_preset_file_path: null,
+  };
 }
 
 async function init(): Promise<void> {
@@ -280,6 +296,7 @@ async function save(): Promise<void> {
 
   if (mode === 'create') {
     await addConfigFile(configFileForm.value);
+    store.commit('updateCopyConfigFileId', null);
   } else if (mode === 'edit') {
     await updateConfigFile(configFileForm.value);
   }

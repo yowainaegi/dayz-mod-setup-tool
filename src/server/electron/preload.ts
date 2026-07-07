@@ -1,6 +1,7 @@
 import {contextBridge, ipcRenderer} from "electron";
 import ResData from "../models/ResData";
 import { STATUS_CODE } from "../models/Constant";
+import { ERROR_CODES } from "../errors/errorCodes";
 
 // ipc认证方法
 const ipc = {
@@ -67,7 +68,13 @@ contextBridge.exposeInMainWorld("ipcRenderer", {
         }else {
             const resData: ResData = {
                 statusCode: STATUS_CODE.API_ERROR,
-                data: `include illegal function ${channel}`
+                data: `include illegal function ${channel}`,
+                error: {
+                    code: ERROR_CODES.ILLEGAL_IPC_CHANNEL,
+                    params: { channel },
+                    rawMessage: `include illegal function ${channel}`,
+                    source: 'preload.send'
+                }
             }
             throw new Error(JSON.stringify(resData));
         }
@@ -90,7 +97,13 @@ contextBridge.exposeInMainWorld("ipcRenderer", {
         }else {
             const resData: ResData = {
                 statusCode: STATUS_CODE.API_ERROR,
-                data: `include illegal function ${channel}`
+                data: `include illegal function ${channel}`,
+                error: {
+                    code: ERROR_CODES.ILLEGAL_IPC_CHANNEL,
+                    params: { channel },
+                    rawMessage: `include illegal function ${channel}`,
+                    source: 'preload.receive'
+                }
             }
             throw new Error(JSON.stringify(resData));
         }
@@ -106,7 +119,13 @@ contextBridge.exposeInMainWorld("ipcRenderer", {
             } else {
                 const resData: ResData = {
                     statusCode: STATUS_CODE.API_ERROR,
-                    data: `include illegal function ${channel}`
+                    data: `include illegal function ${channel}`,
+                    error: {
+                        code: ERROR_CODES.ILLEGAL_IPC_CHANNEL,
+                        params: { channel },
+                        rawMessage: `include illegal function ${channel}`,
+                        source: 'preload.invoke'
+                    }
                 }
                 reject(JSON.stringify(resData));
             }

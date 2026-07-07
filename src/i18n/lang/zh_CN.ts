@@ -46,6 +46,25 @@ export default {
         },
         validates: {
             containsSpecialCharacters: '不能包含特殊字符'
+        },
+        errors: {
+            UNKNOWN: '发生未知错误，请打开日志查看详情。',
+            API_FUNCTION_UNDEFINED: '内部函数不可用：{functionName}',
+            ILLEGAL_IPC_CHANNEL: '内部通信通道未被允许：{channel}',
+            PATH_NOT_FOUND: '路径不存在：{path}',
+            PATH_PERMISSION_DENIED: '没有权限访问此路径：{path}',
+            PATH_ALREADY_EXISTS: '文件或文件夹已存在：{path}',
+            PATH_BUSY: '文件或文件夹正在被其他程序占用：{path}',
+            DIRECTORY_NOT_EMPTY: '文件夹不是空的：{path}',
+            PATH_INVALID: '路径无效：{path}',
+            FILE_SYSTEM_ERROR: '文件操作失败，请打开日志查看详情。',
+            DATABASE_OPERATION_FAILED: '数据库操作失败，请打开日志查看详情。',
+            SERVER_FOLDER_EMPTY: '服务器文件夹路径为空。',
+            SOURCE_PRESET_NOT_FOUND: '源预设文件不存在：{path}',
+            ACTIVE_PRESET_NOT_FOUND: '当前预设文件不存在：{path}',
+            MISSION_FOLDER_INVALID: 'Mission 文件夹无效：{path}',
+            UNSUPPORTED_CE_TYPE: '不支持的 CE 类型：{type}',
+            XML_ROOT_MISMATCH: 'XML 根节点必须是 <{expected}>，当前保存目标是 {target}。'
         }
     },
     components: {
@@ -71,6 +90,7 @@ export default {
         back: '返回',
         dropDown: {
             edit: '编辑',
+            copy: '复制',
             delete: '删除'
         },
         deleteConfirm: '确定要删除此配置文件么？',
@@ -154,7 +174,7 @@ export default {
         dependencyMissingUnavailable: '{modName} 需要以下依赖 MOD，但它们不在当前订阅列表中：\n{dependencies}',
         dependencyRemoveBlocked: '无法移除 {modName}，以下已加入 MOD 依赖它：\n{dependents}',
         removeExistingModConfirmTitle: '移除已部署 MOD？',
-        removeExistingModConfirmMessage: '更新时移除 {modName} 会删除服务器中的 MOD 文件夹，并清理工具自动写入的 CE/mission 引用。你仍需要检查并删除自己手动配置的相关内容。是否继续？',
+        removeExistingModConfirmMessage: '移除{modName}？\n将删除服务器 MOD 文件夹，并清理工具管理的 CE/mission 引用。\n手动配置请自行检查。',
     },
     EditServerView: {
         completedNext: '完成',
@@ -187,9 +207,9 @@ export default {
         copyingContent: "({percent}%) 正在复制 {src} 到 {dest}",
         fileFound: "计算中...({processFileCount}个文件被发现)",
         mainContent: {
-            normalText1:'请在下面给出的路径下完成每种配置文件的分类',
+            normalText1: '请在下面给出的路径下完成每种配置文件的分类',
             importantText: '你的DayZServer路径\/id-＠mod名称\/DAYZ_MOD_SETUP_TOOL_CREATED\/',
-            normalText2:'如果你已经完成配置文件的分类，请点击执行',
+            normalText2: '如果你已经完成配置文件的分类，请点击执行',
             attention: '注：目前版本只支持 types.xml, spawnabletypes.xml, globals.xml, economy.xml, events.xml, messages.xml'
         },
         stagesTitle: {
@@ -334,8 +354,10 @@ export default {
             pathCheck: '路径检测',
             pathCheckSuccess: '检测成功',
             pathChecking: '检测中',
-            recheck: '重新检测',
+            check: '检测',
+            recheck: '再次检测',
             pathCheckFailed: '检测失败',
+            expectedPath: '期望路径',
             workShopFolderPath: '!WorkShop文件夹路径'
         },
         apply: '应用',

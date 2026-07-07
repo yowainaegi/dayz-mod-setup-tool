@@ -1,10 +1,19 @@
 <template>
   <div id="LogList" class="view-wrap">
     <div class="view-content">
-      <a-table :data-source="dataSource" :columns="columns" :pagination="false" :scroll="{y: 500}">
+      <a-table
+        :data-source="dataSource"
+        :columns="columns"
+        :pagination="false"
+        :scroll="{y: 500}"
+        :expandable="{ expandedRowRender: renderExpandedLog }"
+      >
         <template #bodyCell="{ column, text }">
           <template v-if="column.dataIndex === 'log_time'">
             {{ dateFormat(text, DateFormat.YYYY_MM_DD_HH_mm_ss) }}
+          </template>
+          <template v-if="column.dataIndex === 'log_content'">
+            {{ formatLogSummary(text) }}
           </template>
         </template>
         <template #emptyText>
@@ -23,7 +32,7 @@ import {useStore} from "vuex";
 import {i18n} from "@/i18n";
 import {getAppLogList} from "@/server/api/LogListApi";
 import {dateFormat, DateFormat} from "@/utils/DateUtils";
-import { Ref, ref } from "vue";
+import { h, Ref, ref } from "vue";
 import { useRouter } from "vue-router";
 import AppLog from "@/server/models/AppLog";
 import FixedFooterActions from "@/components/common/FixedFooterActions/index.vue";
@@ -68,6 +77,32 @@ getAppLogList().then((res: AppLog[]) => {
   dataSource.value = res
 })
 
+function parseLogContent(logContent: string | null): any {
+  if (!logContent) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(logContent);
+  } catch {
+    return null;
+  }
+}
+
+function formatLogSummary(logContent: string | null): string {
+  const parsedLogContent = parseLogContent(logContent);
+  return parsedLogContent?.message
+      || parsedLogContent?.rawMessage
+      || parsedLogContent?.dialogMessage
+      || parsedLogContent?.userMessage
+      || logContent
+      || '';
+}
+
+function renderExpandedLog(record: AppLog) {
+  return h('pre', { class: 'log-detail' }, record.log_content || '');
+}
+
 
 // 返回
 function back() {
@@ -98,6 +133,15 @@ function back() {
 
 .log-type-error {
   color: var(--app-color-error);
+}
+
+.log-detail {
+  max-height: 260px;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--app-color-text);
 }
 
 :deep(.ant-table-placeholder) {

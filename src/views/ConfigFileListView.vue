@@ -63,8 +63,9 @@
 
             <template #overlay v-if="operationMode === 'create'">
               <a-menu style="width: 100px; text-align: center">
-                <a-menu-item key="1" @click="editConfigFile(item.id)">{{ $t('ConfigFileListView.dropDown.edit') }}</a-menu-item>
-                <a-menu-item key="2" @click="deleteConfigFile(item.id)">{{ $t('ConfigFileListView.dropDown.delete') }}</a-menu-item>
+                <a-menu-item v-if="canEditConfigFile(item)" key="1" @click="editConfigFile(item.id)">{{ $t('ConfigFileListView.dropDown.edit') }}</a-menu-item>
+                <a-menu-item key="2" @click="copyConfigFile(item.id)">{{ $t('ConfigFileListView.dropDown.copy') }}</a-menu-item>
+                <a-menu-item key="3" @click="deleteConfigFile(item.id)">{{ $t('ConfigFileListView.dropDown.delete') }}</a-menu-item>
               </a-menu>
             </template>
           </a-dropdown>
@@ -134,6 +135,8 @@ function searchConfigFile(): void {
 
 function createConfigFile(): void {
   store.commit('updateConfigFileEditViewMode', 'create');
+  store.commit('updateEditConfigFileId', null);
+  store.commit('updateCopyConfigFileId', null);
   router.push('/ConfigFileEdit');
 }
 
@@ -155,6 +158,17 @@ function editConfigFile(id: number | null): void {
   }
   store.commit('updateConfigFileEditViewMode', 'edit');
   store.commit('updateEditConfigFileId', id);
+  store.commit('updateCopyConfigFileId', null);
+  router.push('/ConfigFileEdit');
+}
+
+function copyConfigFile(id: number | null): void {
+  if (id === null) {
+    throw new Error('required param id');
+  }
+  store.commit('updateConfigFileEditViewMode', 'create');
+  store.commit('updateEditConfigFileId', null);
+  store.commit('updateCopyConfigFileId', id);
   router.push('/ConfigFileEdit');
 }
 
@@ -217,6 +231,10 @@ async function next(): Promise<void> {
 
 function hasCompletedServerWorkflow(configFile: ConfigFile): boolean {
   return configFile.config_status === 'server_created' || configFile.config_status === 'ce_mounted';
+}
+
+function canEditConfigFile(configFile: ConfigFile): boolean {
+  return operationMode !== 'create' || !hasCompletedServerWorkflow(configFile);
 }
 
 async function validateWorkflowEntry(configFile: ConfigFile): Promise<boolean> {

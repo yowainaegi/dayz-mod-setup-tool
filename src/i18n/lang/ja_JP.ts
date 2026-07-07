@@ -46,6 +46,25 @@ export default {
         },
         validates: {
             containsSpecialCharacters: '特殊な文字が含まれています'
+        },
+        errors: {
+            UNKNOWN: '不明なエラーが発生しました。詳細はログを確認してください。',
+            API_FUNCTION_UNDEFINED: '内部関数を利用できません: {functionName}',
+            ILLEGAL_IPC_CHANNEL: '許可されていない内部通信チャネルです: {channel}',
+            PATH_NOT_FOUND: 'パスが存在しません: {path}',
+            PATH_PERMISSION_DENIED: 'このパスにアクセスする権限がありません: {path}',
+            PATH_ALREADY_EXISTS: 'ファイルまたはフォルダーが既に存在します: {path}',
+            PATH_BUSY: 'ファイルまたはフォルダーが他のプログラムで使用されています: {path}',
+            DIRECTORY_NOT_EMPTY: 'フォルダーが空ではありません: {path}',
+            PATH_INVALID: 'パスが正しくありません: {path}',
+            FILE_SYSTEM_ERROR: 'ファイル操作に失敗しました。詳細はログを確認してください。',
+            DATABASE_OPERATION_FAILED: 'データベース操作に失敗しました。詳細はログを確認してください。',
+            SERVER_FOLDER_EMPTY: 'サーバーフォルダーのパスが空です。',
+            SOURCE_PRESET_NOT_FOUND: 'ソースプリセットファイルが存在しません: {path}',
+            ACTIVE_PRESET_NOT_FOUND: '使用中のプリセットファイルが存在しません: {path}',
+            MISSION_FOLDER_INVALID: 'Mission フォルダーが正しくありません: {path}',
+            UNSUPPORTED_CE_TYPE: '対応していない CE タイプです: {type}',
+            XML_ROOT_MISMATCH: 'XML ルートは <{expected}> である必要があります。保存先: {target}'
         }
     },
     components: {
@@ -71,6 +90,7 @@ export default {
         back: '戻る',
         dropDown: {
             edit: '編集',
+            copy: 'コピー',
             delete: '削除'
         },
         deleteConfirm: '本当にこの設定ファイルを削除しますか？',
@@ -154,7 +174,7 @@ export default {
         dependencyMissingUnavailable: '{modName} には以下の依存 MOD が必要ですが、現在の購読リストにありません:\n{dependencies}',
         dependencyRemoveBlocked: '{modName} は削除できません。以下の追加済み MOD が依存しています:\n{dependents}',
         removeExistingModConfirmTitle: 'デプロイ済み MOD を削除しますか？',
-        removeExistingModConfirmMessage: '更新時に {modName} を削除すると、サーバー内の MOD フォルダーを削除し、ツール管理の CE/mission 参照を清理します。関連する手動設定は確認して削除する必要があります。続行しますか？'
+        removeExistingModConfirmMessage: '{modName}を削除しますか？\nサーバーの MOD フォルダーとツール管理の CE/mission 参照を削除します。\n手動設定は確認してください。'
     },
     EditServerView: {
         next: '次へ',
@@ -333,8 +353,10 @@ export default {
             pathCheck: 'パスチェック',
             pathCheckSuccess: 'パスのチェックが成功しました',
             pathChecking: 'パスをチェックしています',
+            check: 'チェック',
             recheck: '再度チェックする',
             pathCheckFailed: 'パスのチェックが失敗しました',
+            expectedPath: '想定パス',
             workShopFolderPath: '!WorkShopフォルダーパス',
         },
         apply: '適用',
